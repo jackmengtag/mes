@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.md.mapper.MdLineMapper">
+
+    <resultMap type="MdLine" id="MdLineResult">
+        <id     property="id"    column="id"    />
+        <result property="lineCode"    column="line_code"    />
+        <result property="lineName"    column="line_name"    />
+        <result property="plantCode"    column="plant_code"    />
+        <result property="status"    column="status"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectMdLineVo">
+        select id, line_code, line_name, plant_code, status, create_by, create_time, update_by, update_time, remark from md_line
+    </sql>
+
+    <select id="selectMdLineList" parameterType="MdLine" resultMap="MdLineResult">
+        <include refid="selectMdLineVo"/>
+        <where>
+            <if test="lineCode != null and lineCode != ''">
+                AND line_code like concat('%', #{lineCode}, '%')
+            </if>
+            <if test="lineName != null and lineName != ''">
+                AND line_name like concat('%', #{lineName}, '%')
+            </if>
+            <if test="plantCode != null and plantCode != ''">
+                AND plant_code = #{plantCode}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectMdLineById" parameterType="Long" resultMap="MdLineResult">
+        <include refid="selectMdLineVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertMdLine" parameterType="MdLine" useGeneratedKeys="true" keyProperty="id">
+        insert into md_line(
+            line_code,
+            line_name,
+            plant_code,
+            status,
+            create_by, create_time
+        )values(
+            #{lineCode},
+            #{lineName},
+            #{plantCode},
+            #{status},
+            #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateMdLine" parameterType="MdLine">
+        update md_line
+        <set>
+            <if test="lineCode != null">line_code = #{lineCode},</if>
+            <if test="lineName != null">line_name = #{lineName},</if>
+            <if test="plantCode != null">plant_code = #{plantCode},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteMdLineById" parameterType="Long">
+        delete from md_line where id = #{id}
+    </delete>
+
+    <delete id="deleteMdLineByIds" parameterType="Long">
+        delete from md_line where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.md.mapper.MdVersionApprovalMapper">
+
+    <resultMap type="MdVersionApproval" id="MdVersionApprovalResult">
+        <id     property="id"    column="id"    />
+        <result property="bizType"    column="biz_type"    />
+        <result property="bizId"    column="biz_id"    />
+        <result property="versionNo"    column="version_no"    />
+        <result property="docStatus"    column="doc_status"    />
+        <result property="changeReason"    column="change_reason"    />
+        <result property="changeBy"    column="change_by"    />
+        <result property="changeTime"    column="change_time"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectMdVersionApprovalVo">
+        select id, biz_type, biz_id, version_no, doc_status, change_reason, change_by, change_time, create_by, create_time, update_by, update_time, remark from md_version_approval
+    </sql>
+
+    <select id="selectMdVersionApprovalList" parameterType="MdVersionApproval" resultMap="MdVersionApprovalResult">
+        <include refid="selectMdVersionApprovalVo"/>
+        <where>
+            <if test="bizType != null and bizType != ''">
+                AND biz_type = #{bizType}
+            </if>
+            <if test="bizId != null and bizId != ''">
+                AND biz_id = #{bizId}
+            </if>
+            <if test="versionNo != null and versionNo != ''">
+                AND version_no like concat('%', #{versionNo}, '%')
+            </if>
+            <if test="docStatus != null and docStatus != ''">
+                AND doc_status = #{docStatus}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectMdVersionApprovalById" parameterType="Long" resultMap="MdVersionApprovalResult">
+        <include refid="selectMdVersionApprovalVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertMdVersionApproval" parameterType="MdVersionApproval" useGeneratedKeys="true" keyProperty="id">
+        insert into md_version_approval(
+            biz_type,
+            biz_id,
+            version_no,
+            doc_status,
+            change_reason,
+            change_by,
+            change_time,
+            create_by, create_time
+        )values(
+            #{bizType},
+            #{bizId},
+            #{versionNo},
+            #{docStatus},
+            #{changeReason},
+            #{changeBy},
+            #{changeTime},
+            #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateMdVersionApproval" parameterType="MdVersionApproval">
+        update md_version_approval
+        <set>
+            <if test="bizType != null">biz_type = #{bizType},</if>
+            <if test="bizId != null">biz_id = #{bizId},</if>
+            <if test="versionNo != null">version_no = #{versionNo},</if>
+            <if test="docStatus != null">doc_status = #{docStatus},</if>
+            <if test="changeReason != null">change_reason = #{changeReason},</if>
+            <if test="changeBy != null">change_by = #{changeBy},</if>
+            <if test="changeTime != null">change_time = #{changeTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteMdVersionApprovalById" parameterType="Long">
+        delete from md_version_approval where id = #{id}
+    </delete>
+
+    <delete id="deleteMdVersionApprovalByIds" parameterType="Long">
+        delete from md_version_approval where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

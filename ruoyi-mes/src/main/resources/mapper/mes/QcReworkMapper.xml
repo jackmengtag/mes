@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.qc.mapper.QcReworkMapper">
+
+    <resultMap type="QcRework" id="QcReworkResult">
+        <id     property="id"    column="id"    />
+        <result property="reworkNo"    column="rework_no"    />
+        <result property="nonconformityId"    column="nonconformity_id"    />
+        <result property="productionOrderId"    column="production_order_id"    />
+        <result property="serialNo"    column="serial_no"    />
+        <result property="operationCode"    column="operation_code"    />
+        <result property="reworkQty"    column="rework_qty"    />
+        <result property="reworkResult"    column="rework_result"    />
+        <result property="executorNo"    column="executor_no"    />
+        <result property="status"    column="status"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectQcReworkVo">
+        select id, rework_no, nonconformity_id, production_order_id, serial_no, operation_code, rework_qty, rework_result, executor_no, status, create_by, create_time, update_by, update_time, remark from qc_rework
+    </sql>
+
+    <select id="selectQcReworkList" parameterType="QcRework" resultMap="QcReworkResult">
+        <include refid="selectQcReworkVo"/>
+        <where>
+            <if test="reworkNo != null and reworkNo != ''">
+                AND rework_no like concat('%', #{reworkNo}, '%')
+            </if>
+            <if test="nonconformityId != null and nonconformityId != ''">
+                AND nonconformity_id = #{nonconformityId}
+            </if>
+            <if test="productionOrderId != null and productionOrderId != ''">
+                AND production_order_id = #{productionOrderId}
+            </if>
+            <if test="serialNo != null and serialNo != ''">
+                AND serial_no like concat('%', #{serialNo}, '%')
+            </if>
+            <if test="operationCode != null and operationCode != ''">
+                AND operation_code = #{operationCode}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectQcReworkById" parameterType="Long" resultMap="QcReworkResult">
+        <include refid="selectQcReworkVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertQcRework" parameterType="QcRework" useGeneratedKeys="true" keyProperty="id">
+        insert into qc_rework(
+            rework_no,
+            nonconformity_id,
+            production_order_id,
+            serial_no,
+            operation_code,
+            rework_qty,
+            rework_result,
+            executor_no,
+            status,
+            create_by, create_time
+        )values(
+            #{reworkNo},
+            #{nonconformityId},
+            #{productionOrderId},
+            #{serialNo},
+            #{operationCode},
+            #{reworkQty},
+            #{reworkResult},
+            #{executorNo},
+            #{status},
+            #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateQcRework" parameterType="QcRework">
+        update qc_rework
+        <set>
+            <if test="reworkNo != null">rework_no = #{reworkNo},</if>
+            <if test="nonconformityId != null">nonconformity_id = #{nonconformityId},</if>
+            <if test="productionOrderId != null">production_order_id = #{productionOrderId},</if>
+            <if test="serialNo != null">serial_no = #{serialNo},</if>
+            <if test="operationCode != null">operation_code = #{operationCode},</if>
+            <if test="reworkQty != null">rework_qty = #{reworkQty},</if>
+            <if test="reworkResult != null">rework_result = #{reworkResult},</if>
+            <if test="executorNo != null">executor_no = #{executorNo},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteQcReworkById" parameterType="Long">
+        delete from qc_rework where id = #{id}
+    </delete>
+
+    <delete id="deleteQcReworkByIds" parameterType="Long">
+        delete from qc_rework where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

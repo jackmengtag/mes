@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.md.mapper.MdProductVersionMapper">
+
+    <resultMap type="MdProductVersion" id="MdProductVersionResult">
+        <id     property="id"    column="id"    />
+        <result property="productId"    column="product_id"    />
+        <result property="productCode"    column="product_code"    />
+        <result property="versionNo"    column="version_no"    />
+        <result property="bomVersionId"    column="bom_version_id"    />
+        <result property="routeVersionId"    column="route_version_id"    />
+        <result property="effectiveTime"    column="effective_time"    />
+        <result property="expireTime"    column="expire_time"    />
+        <result property="docStatus"    column="doc_status"    />
+        <result property="status"    column="status"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectMdProductVersionVo">
+        select id, product_id, product_code, version_no, bom_version_id, route_version_id, effective_time, expire_time, doc_status, status, create_by, create_time, update_by, update_time, remark from md_product_version
+    </sql>
+
+    <select id="selectMdProductVersionList" parameterType="MdProductVersion" resultMap="MdProductVersionResult">
+        <include refid="selectMdProductVersionVo"/>
+        <where>
+            <if test="productId != null and productId != ''">
+                AND product_id = #{productId}
+            </if>
+            <if test="productCode != null and productCode != ''">
+                AND product_code like concat('%', #{productCode}, '%')
+            </if>
+            <if test="versionNo != null and versionNo != ''">
+                AND version_no like concat('%', #{versionNo}, '%')
+            </if>
+            <if test="docStatus != null and docStatus != ''">
+                AND doc_status = #{docStatus}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectMdProductVersionById" parameterType="Long" resultMap="MdProductVersionResult">
+        <include refid="selectMdProductVersionVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertMdProductVersion" parameterType="MdProductVersion" useGeneratedKeys="true" keyProperty="id">
+        insert into md_product_version(
+            product_id,
+            product_code,
+            version_no,
+            bom_version_id,
+            route_version_id,
+            effective_time,
+            expire_time,
+            doc_status,
+            status,
+            create_by, create_time
+        )values(
+            #{productId},
+            #{productCode},
+            #{versionNo},
+            #{bomVersionId},
+            #{routeVersionId},
+            #{effectiveTime},
+            #{expireTime},
+            #{docStatus},
+            #{status},
+            #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateMdProductVersion" parameterType="MdProductVersion">
+        update md_product_version
+        <set>
+            <if test="productId != null">product_id = #{productId},</if>
+            <if test="productCode != null">product_code = #{productCode},</if>
+            <if test="versionNo != null">version_no = #{versionNo},</if>
+            <if test="bomVersionId != null">bom_version_id = #{bomVersionId},</if>
+            <if test="routeVersionId != null">route_version_id = #{routeVersionId},</if>
+            <if test="effectiveTime != null">effective_time = #{effectiveTime},</if>
+            <if test="expireTime != null">expire_time = #{expireTime},</if>
+            <if test="docStatus != null">doc_status = #{docStatus},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteMdProductVersionById" parameterType="Long">
+        delete from md_product_version where id = #{id}
+    </delete>
+
+    <delete id="deleteMdProductVersionByIds" parameterType="Long">
+        delete from md_product_version where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

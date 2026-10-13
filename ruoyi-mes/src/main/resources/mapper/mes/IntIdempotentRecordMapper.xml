@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.integration.mapper.IntIdempotentRecordMapper">
+
+    <resultMap type="IntIdempotentRecord" id="IntIdempotentRecordResult">
+        <id     property="id"    column="id"    />
+        <result property="idempotencyKey"    column="idempotency_key"    />
+        <result property="bizType"    column="biz_type"    />
+        <result property="bizId"    column="biz_id"    />
+        <result property="resultCode"    column="result_code"    />
+        <result property="resultBody"    column="result_body"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectIntIdempotentRecordVo">
+        select id, idempotency_key, biz_type, biz_id, result_code, result_body, create_by, create_time, update_by, update_time, remark from int_idempotent_record
+    </sql>
+
+    <select id="selectIntIdempotentRecordList" parameterType="IntIdempotentRecord" resultMap="IntIdempotentRecordResult">
+        <include refid="selectIntIdempotentRecordVo"/>
+        <where>
+            <if test="idempotencyKey != null and idempotencyKey != ''">
+                AND idempotency_key like concat('%', #{idempotencyKey}, '%')
+            </if>
+            <if test="bizType != null and bizType != ''">
+                AND biz_type = #{bizType}
+            </if>
+            <if test="bizId != null and bizId != ''">
+                AND biz_id = #{bizId}
+            </if>
+            <if test="resultCode != null and resultCode != ''">
+                AND result_code = #{resultCode}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectIntIdempotentRecordById" parameterType="Long" resultMap="IntIdempotentRecordResult">
+        <include refid="selectIntIdempotentRecordVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertIntIdempotentRecord" parameterType="IntIdempotentRecord" useGeneratedKeys="true" keyProperty="id">
+        insert into int_idempotent_record(
+            idempotency_key,
+            biz_type,
+            biz_id,
+            result_code,
+            result_body,
+            create_by, create_time
+        )values(
+            #{idempotencyKey},
+            #{bizType},
+            #{bizId},
+            #{resultCode},
+            #{resultBody},
+            #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateIntIdempotentRecord" parameterType="IntIdempotentRecord">
+        update int_idempotent_record
+        <set>
+            <if test="idempotencyKey != null">idempotency_key = #{idempotencyKey},</if>
+            <if test="bizType != null">biz_type = #{bizType},</if>
+            <if test="bizId != null">biz_id = #{bizId},</if>
+            <if test="resultCode != null">result_code = #{resultCode},</if>
+            <if test="resultBody != null">result_body = #{resultBody},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteIntIdempotentRecordById" parameterType="Long">
+        delete from int_idempotent_record where id = #{id}
+    </delete>
+
+    <delete id="deleteIntIdempotentRecordByIds" parameterType="Long">
+        delete from int_idempotent_record where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

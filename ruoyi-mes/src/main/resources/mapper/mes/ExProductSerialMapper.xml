@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.ex.mapper.ExProductSerialMapper">
+
+    <resultMap type="ExProductSerial" id="ExProductSerialResult">
+        <id     property="id"    column="id"    />
+        <result property="serialNo"    column="serial_no"    />
+        <result property="productId"    column="product_id"    />
+        <result property="productCode"    column="product_code"    />
+        <result property="productionOrderId"    column="production_order_id"    />
+        <result property="currentOperation"    column="current_operation"    />
+        <result property="currentStatus"    column="current_status"    />
+        <result property="qualityStatus"    column="quality_status"    />
+        <result property="warehouseStatus"    column="warehouse_status"    />
+        <result property="scrapFlag"    column="scrap_flag"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectExProductSerialVo">
+        select id, serial_no, product_id, product_code, production_order_id, current_operation, current_status, quality_status, warehouse_status, scrap_flag, create_by, create_time, update_by, update_time, remark from ex_product_serial
+    </sql>
+
+    <select id="selectExProductSerialList" parameterType="ExProductSerial" resultMap="ExProductSerialResult">
+        <include refid="selectExProductSerialVo"/>
+        <where>
+            <if test="serialNo != null and serialNo != ''">
+                AND serial_no like concat('%', #{serialNo}, '%')
+            </if>
+            <if test="productId != null and productId != ''">
+                AND product_id = #{productId}
+            </if>
+            <if test="productCode != null and productCode != ''">
+                AND product_code like concat('%', #{productCode}, '%')
+            </if>
+            <if test="productionOrderId != null and productionOrderId != ''">
+                AND production_order_id = #{productionOrderId}
+            </if>
+            <if test="currentStatus != null and currentStatus != ''">
+                AND current_status = #{currentStatus}
+            </if>
+            <if test="qualityStatus != null and qualityStatus != ''">
+                AND quality_status = #{qualityStatus}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectExProductSerialById" parameterType="Long" resultMap="ExProductSerialResult">
+        <include refid="selectExProductSerialVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertExProductSerial" parameterType="ExProductSerial" useGeneratedKeys="true" keyProperty="id">
+        insert into ex_product_serial(
+            serial_no,
+            product_id,
+            product_code,
+            production_order_id,
+            current_operation,
+            current_status,
+            quality_status,
+            warehouse_status,
+            scrap_flag,
+            create_by, create_time
+        )values(
+            #{serialNo},
+            #{productId},
+            #{productCode},
+            #{productionOrderId},
+            #{currentOperation},
+            #{currentStatus},
+            #{qualityStatus},
+            #{warehouseStatus},
+            #{scrapFlag},
+            #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateExProductSerial" parameterType="ExProductSerial">
+        update ex_product_serial
+        <set>
+            <if test="serialNo != null">serial_no = #{serialNo},</if>
+            <if test="productId != null">product_id = #{productId},</if>
+            <if test="productCode != null">product_code = #{productCode},</if>
+            <if test="productionOrderId != null">production_order_id = #{productionOrderId},</if>
+            <if test="currentOperation != null">current_operation = #{currentOperation},</if>
+            <if test="currentStatus != null">current_status = #{currentStatus},</if>
+            <if test="qualityStatus != null">quality_status = #{qualityStatus},</if>
+            <if test="warehouseStatus != null">warehouse_status = #{warehouseStatus},</if>
+            <if test="scrapFlag != null">scrap_flag = #{scrapFlag},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteExProductSerialById" parameterType="Long">
+        delete from ex_product_serial where id = #{id}
+    </delete>
+
+    <delete id="deleteExProductSerialByIds" parameterType="Long">
+        delete from ex_product_serial where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

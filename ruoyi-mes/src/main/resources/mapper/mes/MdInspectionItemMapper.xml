@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.md.mapper.MdInspectionItemMapper">
+
+    <resultMap type="MdInspectionItem" id="MdInspectionItemResult">
+        <id     property="id"    column="id"    />
+        <result property="itemCode"    column="item_code"    />
+        <result property="itemName"    column="item_name"    />
+        <result property="unit"    column="unit"    />
+        <result property="lowerLimit"    column="lower_limit"    />
+        <result property="upperLimit"    column="upper_limit"    />
+        <result property="standardValue"    column="standard_value"    />
+        <result property="status"    column="status"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectMdInspectionItemVo">
+        select id, item_code, item_name, unit, lower_limit, upper_limit, standard_value, status, create_by, create_time, update_by, update_time, remark from md_inspection_item
+    </sql>
+
+    <select id="selectMdInspectionItemList" parameterType="MdInspectionItem" resultMap="MdInspectionItemResult">
+        <include refid="selectMdInspectionItemVo"/>
+        <where>
+            <if test="itemCode != null and itemCode != ''">
+                AND item_code like concat('%', #{itemCode}, '%')
+            </if>
+            <if test="itemName != null and itemName != ''">
+                AND item_name like concat('%', #{itemName}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectMdInspectionItemById" parameterType="Long" resultMap="MdInspectionItemResult">
+        <include refid="selectMdInspectionItemVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertMdInspectionItem" parameterType="MdInspectionItem" useGeneratedKeys="true" keyProperty="id">
+        insert into md_inspection_item(
+            item_code,
+            item_name,
+            unit,
+            lower_limit,
+            upper_limit,
+            standard_value,
+            status,
+            create_by, create_time
+        )values(
+            #{itemCode},
+            #{itemName},
+            #{unit},
+            #{lowerLimit},
+            #{upperLimit},
+            #{standardValue},
+            #{status},
+            #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateMdInspectionItem" parameterType="MdInspectionItem">
+        update md_inspection_item
+        <set>
+            <if test="itemCode != null">item_code = #{itemCode},</if>
+            <if test="itemName != null">item_name = #{itemName},</if>
+            <if test="unit != null">unit = #{unit},</if>
+            <if test="lowerLimit != null">lower_limit = #{lowerLimit},</if>
+            <if test="upperLimit != null">upper_limit = #{upperLimit},</if>
+            <if test="standardValue != null">standard_value = #{standardValue},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteMdInspectionItemById" parameterType="Long">
+        delete from md_inspection_item where id = #{id}
+    </delete>
+
+    <delete id="deleteMdInspectionItemByIds" parameterType="Long">
+        delete from md_inspection_item where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

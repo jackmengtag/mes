@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.om.mapper.OmDemandMapper">
+
+    <resultMap type="OmDemand" id="OmDemandResult">
+        <id     property="id"    column="id"    />
+        <result property="demandNo"    column="demand_no"    />
+        <result property="sourceOrderNo"    column="source_order_no"    />
+        <result property="sourceOrderLineNo"    column="source_order_line_no"    />
+        <result property="sourceSystem"    column="source_system"    />
+        <result property="erpDemandNo"    column="erp_demand_no"    />
+        <result property="plantCode"    column="plant_code"    />
+        <result property="productId"    column="product_id"    />
+        <result property="productCode"    column="product_code"    />
+        <result property="productVersion"    column="product_version"    />
+        <result property="requiredQty"    column="required_qty"    />
+        <result property="dueDate"    column="due_date"    />
+        <result property="priority"    column="priority"    />
+        <result property="status"    column="status"    />
+        <result property="idempotencyKey"    column="idempotency_key"    />
+        <result property="changeReason"    column="change_reason"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectOmDemandVo">
+        select id, demand_no, source_order_no, source_order_line_no, source_system, erp_demand_no, plant_code, product_id, product_code, product_version, required_qty, due_date, priority, status, idempotency_key, change_reason, create_by, create_time, update_by, update_time, remark from om_demand
+    </sql>
+
+    <select id="selectOmDemandList" parameterType="OmDemand" resultMap="OmDemandResult">
+        <include refid="selectOmDemandVo"/>
+        <where>
+            <if test="demandNo != null and demandNo != ''">
+                AND demand_no like concat('%', #{demandNo}, '%')
+            </if>
+            <if test="sourceOrderNo != null and sourceOrderNo != ''">
+                AND source_order_no like concat('%', #{sourceOrderNo}, '%')
+            </if>
+            <if test="sourceSystem != null and sourceSystem != ''">
+                AND source_system = #{sourceSystem}
+            </if>
+            <if test="plantCode != null and plantCode != ''">
+                AND plant_code = #{plantCode}
+            </if>
+            <if test="productId != null and productId != ''">
+                AND product_id = #{productId}
+            </if>
+            <if test="productCode != null and productCode != ''">
+                AND product_code like concat('%', #{productCode}, '%')
+            </if>
+            <if test="priority != null and priority != ''">
+                AND priority = #{priority}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectOmDemandById" parameterType="Long" resultMap="OmDemandResult">
+        <include refid="selectOmDemandVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertOmDemand" parameterType="OmDemand" useGeneratedKeys="true" keyProperty="id">
+        insert into om_demand(
+            demand_no,
+            source_order_no,
+            source_order_line_no,
+            source_system,
+            erp_demand_no,
+            plant_code,
+            product_id,
+            product_code,
+            product_version,
+            required_qty,
+            due_date,
+            priority,
+            status,
+            idempotency_key,
+            change_reason,
+            create_by, create_time
+        )values(
+            #{demandNo},
+            #{sourceOrderNo},
+            #{sourceOrderLineNo},
+            #{sourceSystem},
+            #{erpDemandNo},
+            #{plantCode},
+            #{productId},
+            #{productCode},
+            #{productVersion},
+            #{requiredQty},
+            #{dueDate},
+            #{priority},
+            #{status},
+            #{idempotencyKey},
+            #{changeReason},
+            #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateOmDemand" parameterType="OmDemand">
+        update om_demand
+        <set>
+            <if test="demandNo != null">demand_no = #{demandNo},</if>
+            <if test="sourceOrderNo != null">source_order_no = #{sourceOrderNo},</if>
+            <if test="sourceOrderLineNo != null">source_order_line_no = #{sourceOrderLineNo},</if>
+            <if test="sourceSystem != null">source_system = #{sourceSystem},</if>
+            <if test="erpDemandNo != null">erp_demand_no = #{erpDemandNo},</if>
+            <if test="plantCode != null">plant_code = #{plantCode},</if>
+            <if test="productId != null">product_id = #{productId},</if>
+            <if test="productCode != null">product_code = #{productCode},</if>
+            <if test="productVersion != null">product_version = #{productVersion},</if>
+            <if test="requiredQty != null">required_qty = #{requiredQty},</if>
+            <if test="dueDate != null">due_date = #{dueDate},</if>
+            <if test="priority != null">priority = #{priority},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="idempotencyKey != null">idempotency_key = #{idempotencyKey},</if>
+            <if test="changeReason != null">change_reason = #{changeReason},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteOmDemandById" parameterType="Long">
+        delete from om_demand where id = #{id}
+    </delete>
+
+    <delete id="deleteOmDemandByIds" parameterType="Long">
+        delete from om_demand where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

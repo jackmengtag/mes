@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.eq.mapper.EqOeeMapper">
+
+    <resultMap type="EqOee" id="EqOeeResult">
+        <id     property="id"    column="id"    />
+        <result property="equipmentId"    column="equipment_id"    />
+        <result property="equipmentCode"    column="equipment_code"    />
+        <result property="statDate"    column="stat_date"    />
+        <result property="availability"    column="availability"    />
+        <result property="performance"    column="performance"    />
+        <result property="quality"    column="quality"    />
+        <result property="oee"    column="oee"    />
+        <result property="runMinutes"    column="run_minutes"    />
+        <result property="stopMinutes"    column="stop_minutes"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectEqOeeVo">
+        select id, equipment_id, equipment_code, stat_date, availability, performance, quality, oee, run_minutes, stop_minutes, create_by, create_time, update_by, update_time, remark from eq_oee
+    </sql>
+
+    <select id="selectEqOeeList" parameterType="EqOee" resultMap="EqOeeResult">
+        <include refid="selectEqOeeVo"/>
+        <where>
+            <if test="equipmentId != null and equipmentId != ''">
+                AND equipment_id = #{equipmentId}
+            </if>
+            <if test="equipmentCode != null and equipmentCode != ''">
+                AND equipment_code like concat('%', #{equipmentCode}, '%')
+            </if>
+            <if test="statDate != null and statDate != ''">
+                AND stat_date = #{statDate}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectEqOeeById" parameterType="Long" resultMap="EqOeeResult">
+        <include refid="selectEqOeeVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertEqOee" parameterType="EqOee" useGeneratedKeys="true" keyProperty="id">
+        insert into eq_oee(
+            equipment_id,
+            equipment_code,
+            stat_date,
+            availability,
+            performance,
+            quality,
+            oee,
+            run_minutes,
+            stop_minutes,
+            create_by, create_time
+        )values(
+            #{equipmentId},
+            #{equipmentCode},
+            #{statDate},
+            #{availability},
+            #{performance},
+            #{quality},
+            #{oee},
+            #{runMinutes},
+            #{stopMinutes},
+            #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateEqOee" parameterType="EqOee">
+        update eq_oee
+        <set>
+            <if test="equipmentId != null">equipment_id = #{equipmentId},</if>
+            <if test="equipmentCode != null">equipment_code = #{equipmentCode},</if>
+            <if test="statDate != null">stat_date = #{statDate},</if>
+            <if test="availability != null">availability = #{availability},</if>
+            <if test="performance != null">performance = #{performance},</if>
+            <if test="quality != null">quality = #{quality},</if>
+            <if test="oee != null">oee = #{oee},</if>
+            <if test="runMinutes != null">run_minutes = #{runMinutes},</if>
+            <if test="stopMinutes != null">stop_minutes = #{stopMinutes},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteEqOeeById" parameterType="Long">
+        delete from eq_oee where id = #{id}
+    </delete>
+
+    <delete id="deleteEqOeeByIds" parameterType="Long">
+        delete from eq_oee where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

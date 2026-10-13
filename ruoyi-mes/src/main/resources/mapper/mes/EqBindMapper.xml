@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.eq.mapper.EqBindMapper">
+
+    <resultMap type="EqBind" id="EqBindResult">
+        <id     property="id"    column="id"    />
+        <result property="equipmentId"    column="equipment_id"    />
+        <result property="equipmentCode"    column="equipment_code"    />
+        <result property="productionOrderId"    column="production_order_id"    />
+        <result property="operationCode"    column="operation_code"    />
+        <result property="serialNo"    column="serial_no"    />
+        <result property="shiftCode"    column="shift_code"    />
+        <result property="operatorNo"    column="operator_no"    />
+        <result property="bindTime"    column="bind_time"    />
+        <result property="unbindTime"    column="unbind_time"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectEqBindVo">
+        select id, equipment_id, equipment_code, production_order_id, operation_code, serial_no, shift_code, operator_no, bind_time, unbind_time, create_by, create_time, update_by, update_time, remark from eq_bind
+    </sql>
+
+    <select id="selectEqBindList" parameterType="EqBind" resultMap="EqBindResult">
+        <include refid="selectEqBindVo"/>
+        <where>
+            <if test="equipmentId != null and equipmentId != ''">
+                AND equipment_id = #{equipmentId}
+            </if>
+            <if test="equipmentCode != null and equipmentCode != ''">
+                AND equipment_code like concat('%', #{equipmentCode}, '%')
+            </if>
+            <if test="productionOrderId != null and productionOrderId != ''">
+                AND production_order_id = #{productionOrderId}
+            </if>
+            <if test="operationCode != null and operationCode != ''">
+                AND operation_code = #{operationCode}
+            </if>
+            <if test="serialNo != null and serialNo != ''">
+                AND serial_no like concat('%', #{serialNo}, '%')
+            </if>
+        </where>
+    </select>
+
+    <select id="selectEqBindById" parameterType="Long" resultMap="EqBindResult">
+        <include refid="selectEqBindVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertEqBind" parameterType="EqBind" useGeneratedKeys="true" keyProperty="id">
+        insert into eq_bind(
+            equipment_id,
+            equipment_code,
+            production_order_id,
+            operation_code,
+            serial_no,
+            shift_code,
+            operator_no,
+            bind_time,
+            unbind_time,
+            create_by, create_time
+        )values(
+            #{equipmentId},
+            #{equipmentCode},
+            #{productionOrderId},
+            #{operationCode},
+            #{serialNo},
+            #{shiftCode},
+            #{operatorNo},
+            #{bindTime},
+            #{unbindTime},
+            #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateEqBind" parameterType="EqBind">
+        update eq_bind
+        <set>
+            <if test="equipmentId != null">equipment_id = #{equipmentId},</if>
+            <if test="equipmentCode != null">equipment_code = #{equipmentCode},</if>
+            <if test="productionOrderId != null">production_order_id = #{productionOrderId},</if>
+            <if test="operationCode != null">operation_code = #{operationCode},</if>
+            <if test="serialNo != null">serial_no = #{serialNo},</if>
+            <if test="shiftCode != null">shift_code = #{shiftCode},</if>
+            <if test="operatorNo != null">operator_no = #{operatorNo},</if>
+            <if test="bindTime != null">bind_time = #{bindTime},</if>
+            <if test="unbindTime != null">unbind_time = #{unbindTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteEqBindById" parameterType="Long">
+        delete from eq_bind where id = #{id}
+    </delete>
+
+    <delete id="deleteEqBindByIds" parameterType="Long">
+        delete from eq_bind where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

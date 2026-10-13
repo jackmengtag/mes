@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.ex.mapper.ExExceptionReportMapper">
+
+    <resultMap type="ExExceptionReport" id="ExExceptionReportResult">
+        <id     property="id"    column="id"    />
+        <result property="exceptionNo"    column="exception_no"    />
+        <result property="exceptionType"    column="exception_type"    />
+        <result property="productionOrderId"    column="production_order_id"    />
+        <result property="operationTaskId"    column="operation_task_id"    />
+        <result property="equipmentId"    column="equipment_id"    />
+        <result property="serialNo"    column="serial_no"    />
+        <result property="severity"    column="severity"    />
+        <result property="description"    column="description"    />
+        <result property="reporterNo"    column="reporter_no"    />
+        <result property="reportedAt"    column="reported_at"    />
+        <result property="handlerNo"    column="handler_no"    />
+        <result property="handleResult"    column="handle_result"    />
+        <result property="status"    column="status"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectExExceptionReportVo">
+        select id, exception_no, exception_type, production_order_id, operation_task_id, equipment_id, serial_no, severity, description, reporter_no, reported_at, handler_no, handle_result, status, create_by, create_time, update_by, update_time, remark from ex_exception_report
+    </sql>
+
+    <select id="selectExExceptionReportList" parameterType="ExExceptionReport" resultMap="ExExceptionReportResult">
+        <include refid="selectExExceptionReportVo"/>
+        <where>
+            <if test="exceptionNo != null and exceptionNo != ''">
+                AND exception_no like concat('%', #{exceptionNo}, '%')
+            </if>
+            <if test="exceptionType != null and exceptionType != ''">
+                AND exception_type = #{exceptionType}
+            </if>
+            <if test="productionOrderId != null and productionOrderId != ''">
+                AND production_order_id = #{productionOrderId}
+            </if>
+            <if test="operationTaskId != null and operationTaskId != ''">
+                AND operation_task_id = #{operationTaskId}
+            </if>
+            <if test="equipmentId != null and equipmentId != ''">
+                AND equipment_id = #{equipmentId}
+            </if>
+            <if test="serialNo != null and serialNo != ''">
+                AND serial_no like concat('%', #{serialNo}, '%')
+            </if>
+            <if test="severity != null and severity != ''">
+                AND severity = #{severity}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectExExceptionReportById" parameterType="Long" resultMap="ExExceptionReportResult">
+        <include refid="selectExExceptionReportVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertExExceptionReport" parameterType="ExExceptionReport" useGeneratedKeys="true" keyProperty="id">
+        insert into ex_exception_report(
+            exception_no,
+            exception_type,
+            production_order_id,
+            operation_task_id,
+            equipment_id,
+            serial_no,
+            severity,
+            description,
+            reporter_no,
+            reported_at,
+            handler_no,
+            handle_result,
+            status,
+            create_by, create_time
+        )values(
+            #{exceptionNo},
+            #{exceptionType},
+            #{productionOrderId},
+            #{operationTaskId},
+            #{equipmentId},
+            #{serialNo},
+            #{severity},
+            #{description},
+            #{reporterNo},
+            #{reportedAt},
+            #{handlerNo},
+            #{handleResult},
+            #{status},
+            #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateExExceptionReport" parameterType="ExExceptionReport">
+        update ex_exception_report
+        <set>
+            <if test="exceptionNo != null">exception_no = #{exceptionNo},</if>
+            <if test="exceptionType != null">exception_type = #{exceptionType},</if>
+            <if test="productionOrderId != null">production_order_id = #{productionOrderId},</if>
+            <if test="operationTaskId != null">operation_task_id = #{operationTaskId},</if>
+            <if test="equipmentId != null">equipment_id = #{equipmentId},</if>
+            <if test="serialNo != null">serial_no = #{serialNo},</if>
+            <if test="severity != null">severity = #{severity},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="reporterNo != null">reporter_no = #{reporterNo},</if>
+            <if test="reportedAt != null">reported_at = #{reportedAt},</if>
+            <if test="handlerNo != null">handler_no = #{handlerNo},</if>
+            <if test="handleResult != null">handle_result = #{handleResult},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteExExceptionReportById" parameterType="Long">
+        delete from ex_exception_report where id = #{id}
+    </delete>
+
+    <delete id="deleteExExceptionReportByIds" parameterType="Long">
+        delete from ex_exception_report where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

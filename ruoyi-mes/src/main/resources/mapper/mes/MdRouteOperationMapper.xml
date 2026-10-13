@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.md.mapper.MdRouteOperationMapper">
+
+    <resultMap type="MdRouteOperation" id="MdRouteOperationResult">
+        <id     property="id"    column="id"    />
+        <result property="routeId"    column="route_id"    />
+        <result property="operationCode"    column="operation_code"    />
+        <result property="operationName"    column="operation_name"    />
+        <result property="sequenceNo"    column="sequence_no"    />
+        <result property="workCenterId"    column="work_center_id"    />
+        <result property="equipmentType"    column="equipment_type"    />
+        <result property="skillRequirement"    column="skill_requirement"    />
+        <result property="forceInspect"    column="force_inspect"    />
+        <result property="inspectionPlanId"    column="inspection_plan_id"    />
+        <result property="standardHours"    column="standard_hours"    />
+        <result property="status"    column="status"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectMdRouteOperationVo">
+        select id, route_id, operation_code, operation_name, sequence_no, work_center_id, equipment_type, skill_requirement, force_inspect, inspection_plan_id, standard_hours, status, create_by, create_time, update_by, update_time, remark from md_route_operation
+    </sql>
+
+    <select id="selectMdRouteOperationList" parameterType="MdRouteOperation" resultMap="MdRouteOperationResult">
+        <include refid="selectMdRouteOperationVo"/>
+        <where>
+            <if test="routeId != null and routeId != ''">
+                AND route_id = #{routeId}
+            </if>
+            <if test="operationCode != null and operationCode != ''">
+                AND operation_code like concat('%', #{operationCode}, '%')
+            </if>
+            <if test="operationName != null and operationName != ''">
+                AND operation_name like concat('%', #{operationName}, '%')
+            </if>
+            <if test="workCenterId != null and workCenterId != ''">
+                AND work_center_id = #{workCenterId}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectMdRouteOperationById" parameterType="Long" resultMap="MdRouteOperationResult">
+        <include refid="selectMdRouteOperationVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertMdRouteOperation" parameterType="MdRouteOperation" useGeneratedKeys="true" keyProperty="id">
+        insert into md_route_operation(
+            route_id,
+            operation_code,
+            operation_name,
+            sequence_no,
+            work_center_id,
+            equipment_type,
+            skill_requirement,
+            force_inspect,
+            inspection_plan_id,
+            standard_hours,
+            status,
+            create_by, create_time
+        )values(
+            #{routeId},
+            #{operationCode},
+            #{operationName},
+            #{sequenceNo},
+            #{workCenterId},
+            #{equipmentType},
+            #{skillRequirement},
+            #{forceInspect},
+            #{inspectionPlanId},
+            #{standardHours},
+            #{status},
+            #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateMdRouteOperation" parameterType="MdRouteOperation">
+        update md_route_operation
+        <set>
+            <if test="routeId != null">route_id = #{routeId},</if>
+            <if test="operationCode != null">operation_code = #{operationCode},</if>
+            <if test="operationName != null">operation_name = #{operationName},</if>
+            <if test="sequenceNo != null">sequence_no = #{sequenceNo},</if>
+            <if test="workCenterId != null">work_center_id = #{workCenterId},</if>
+            <if test="equipmentType != null">equipment_type = #{equipmentType},</if>
+            <if test="skillRequirement != null">skill_requirement = #{skillRequirement},</if>
+            <if test="forceInspect != null">force_inspect = #{forceInspect},</if>
+            <if test="inspectionPlanId != null">inspection_plan_id = #{inspectionPlanId},</if>
+            <if test="standardHours != null">standard_hours = #{standardHours},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteMdRouteOperationById" parameterType="Long">
+        delete from md_route_operation where id = #{id}
+    </delete>
+
+    <delete id="deleteMdRouteOperationByIds" parameterType="Long">
+        delete from md_route_operation where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>
