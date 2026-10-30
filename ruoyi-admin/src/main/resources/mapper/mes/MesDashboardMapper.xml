@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.mapper.MesDashboardMapper">
+
+    <select id="selectOverviewKpis" resultType="java.util.HashMap">
+        select
+          (select coalesce(sum(qty_ok),0) from mes_report
+             where date(report_time) = (select max(date(report_time)) from mes_report)) as output,
+          (select coalesce(sum(qty),0) from mes_work_order where status &lt;&gt; 'finished') as planQty,
+          (select coalesce(sum(completed_qty),0) from mes_work_order) as doneQty,
+          (select coalesce(sum(qty_ok),0) from mes_report) as okQty,
+          (select coalesce(sum(qty_ng),0) from mes_report) as ngQty,
+          (select coalesce(round(avg(oee),1),0) from mes_equipment) as oee,
+          (select coalesce(sum(qty - completed_qty),0) from mes_work_order
+             where status in ('running','waiting','warning')) as wip,
+          (select count(*) from mes_work_order where status = 'waiting') as shortageOrders,
+          (select coalesce(sum(amount),0) from mes_stock) as stockAmount,
+          (select count(*) from mes_alarm where status = 'active') as activeAlarms
+    </select>
+
+    <select id="selectLineStats" resultType="java.util.HashMap">
+        select w.line_code as lineCode,
+               coalesce(sum(w.qty),0) as planQty,
+               coalesce(sum(w.completed_qty),0) as doneQty,
+               coalesce(sum(w.ng_qty),0) as ngQty,
+               (select coalesce(round(avg(e.oee),1),0) from mes_equipment e where e.line_code = w.line_code) as oee
+        from mes_work_order w
+        group by w.line_code
+        order by w.line_code
+    </select>
+
+    <select id="selectHourlyOutput" resultType="java.util.HashMap">
+        select date_format(report_time, '%H') as h, sum(qty_ok) as v
+        from mes_report group by h order by h
+    </select>
+
+    <select id="selectOutputTrend" resultType="java.util.HashMap">
+        select date_format(report_time, '%m-%d') as d, sum(qty_ok) as v
+        from mes_report
+        where report_time &gt;= date_sub((select max(report_time) from mes_report), interval #{days} day)
+        group by d order by d
+    </select>
+
+    <select id="selectKitting" resultType="java.util.HashMap">
+        select material_name as name, sum(qty) as qty, max(safety_qty) as safety,
+               round(sum(qty) / nullif(max(safety_qty),0) * 100, 1) as rate
+        from mes_stock
+        where safety_qty &gt; 0 and warehouse_code in ('WH-RM','WH-LINE')
+        group by material_code, material_name
+        order by rate asc
+        limit 8
+    </select>
+
+    <select id="selectWipOrders" resultType="java.util.HashMap">
+        select order_code as orderCode, product_name as productName, qty, completed_qty as completedQty,
+               ng_qty as ngQty, line_code as lineCode, station, status, priority
+        from mes_work_order
+        where status in ('running','waiting','warning')
+        order by work_order_id
+        limit 20
+    </select>
+
+    <select id="selectActiveAlarms" resultType="java.util.HashMap">
+        select alarm_code as alarmCode, equipment_name as equipmentName, level, content,
+               date_format(alarm_time, '%m-%d %H:%i') as alarmTime, status
+        from mes_alarm where status = 'active'
+        order by alarm_time desc
+    </select>
+
+    <select id="selectScmKpis" resultType="java.util.HashMap">
+        select
+          (select coalesce(sum(qty - received_qty),0) from mes_purchase_order) as purchaseInTransit,
+          (select count(*) from mes_purchase_order where status in ('ordered','partial','overdue')) as pendingDelivery,
+          (select coalesce(sum(amount),0) from mes_stock) as stockAmount,
+          (select coalesce(round(avg(on_time_rate),1),0) from mes_supplier) as onTimeRate,
+          (select coalesce(sum(amount),0) from mes_purchase_order
+             where date_format(order_date,'%Y-%m') = date_format(curdate(),'%Y-%m')) as monthPurchase,
+          (select coalesce(sum(amount),0) from mes_sales_order
+             where date_format(order_date,'%Y-%m') = date_format(curdate(),'%Y-%m')) as monthSales,
+          (select count(*) from mes_voucher where u8c_status = 'failed') as u8cFailed,
+          (select count(*) from mes_voucher where u8c_status &lt;&gt; 'success') as u8cPending,
+          (select count(*) from mes_collab where status in ('abnormal','overdue')) as exceptions
+    </select>
+
+    <select id="selectPendingTasks" resultType="java.util.HashMap">
+        select collab_code as collabCode, collab_type as collabType, supplier_name as supplierName,
+               material_name as materialName, qty, date_format(plan_date,'%Y-%m-%d') as planDate, status, content
+        from mes_collab
+        where status in ('pending','running')
+        order by plan_date
+        limit 12
+    </select>
+
+    <select id="selectDeliveryExceptions" resultType="java.util.HashMap">
+        select collab_code as collabCode, collab_type as collabType, supplier_name as supplierName,
+               material_name as materialName, qty, date_format(plan_date,'%Y-%m-%d') as planDate, status, content
+        from mes_collab
+        where status in ('abnormal','overdue')
+        order by plan_date
+        limit 12
+    </select>
+
+    <select id="selectStockWarnings" resultType="java.util.HashMap">
+        select stock_id as stockId, material_code as materialCode, material_name as materialName,
+               warehouse_name as warehouseName, qty, safety_qty as safetyQty, status
+        from mes_stock
+        where safety_qty &gt; 0 and qty &lt; safety_qty
+        order by qty / safety_qty asc
+        limit 12
+    </select>
+
+    <select id="selectPendingVouchers" resultType="java.util.HashMap">
+        select voucher_id as voucherId, voucher_code as voucherCode, biz_type as bizType, biz_code as bizCode,
+               amount, account_period as accountPeriod, status, u8c_status as u8cStatus,
+               date_format(sync_time,'%Y-%m-%d %H:%i') as syncTime, message
+        from mes_voucher
+        where status = 'pending' or u8c_status &lt;&gt; 'success'
+        order by voucher_id desc
+        limit 15
+    </select>
+
+    <select id="selectPurchaseTrend" resultType="java.util.HashMap">
+        select date_format(order_date, '%Y-%m') as m, sum(amount) as v
+        from mes_purchase_order group by m order by m
+    </select>
+
+    <select id="selectSalesTrend" resultType="java.util.HashMap">
+        select date_format(order_date, '%Y-%m') as m, sum(amount) as v
+        from mes_sales_order group by m order by m
+    </select>
+
+    <select id="selectDefectPareto" resultType="java.util.HashMap">
+        select issue_type as name, count(*) as v, coalesce(sum(qty),0) as qty
+        from mes_quality_issue
+        where found_time &gt;= date_sub((select max(found_time) from mes_quality_issue), interval #{days} day)
+        group by issue_type order by v desc
+    </select>
+
+    <select id="selectOeeByLine" resultType="java.util.HashMap">
+        select line_code as lineCode, round(avg(oee),1) as oee
+        from mes_equipment group by line_code order by line_code
+    </select>
+
+    <select id="selectAnalysisLines" resultType="java.util.HashMap">
+        select w.line_code as lineCode,
+               coalesce(sum(w.qty),0) as planQty,
+               coalesce(sum(w.completed_qty),0) as doneQty,
+               coalesce(sum(w.ng_qty),0) as ngQty,
+               round(sum(w.completed_qty) / nullif(sum(w.qty),0) * 100, 1) as rate,
+               (select coalesce(round(avg(e.oee),1),0) from mes_equipment e where e.line_code = w.line_code) as oee
+        from mes_work_order w group by w.line_code order by w.line_code
+    </select>
+
+    <select id="selectAnalysisKpis" resultType="java.util.HashMap">
+        select
+          (select coalesce(sum(qty_ok),0) from mes_report
+             where report_time &gt;= date_sub((select max(report_time) from mes_report), interval #{days} day)) as output,
+          (select coalesce(sum(qty_ok),0) from mes_report) as totalOutput,
+          (select coalesce(sum(qty_ng),0) from mes_report) as ngQty,
+          (select coalesce(round(avg(oee),1),0) from mes_equipment) as oee,
+          (select count(*) from mes_quality_issue) as issueCount,
+          (select count(*) from mes_alarm) as alarmCount
+    </select>
+</mapper>

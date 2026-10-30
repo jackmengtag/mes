@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.mapper.MesEquipmentMapper">
+
+    <resultMap type="com.ruoyi.mes.domain.MesEquipment" id="MesEquipmentResult">
+        <result property="equipmentId"    column="equipment_id"    />
+        <result property="equipmentCode"    column="equipment_code"    />
+        <result property="equipmentName"    column="equipment_name"    />
+        <result property="lineCode"    column="line_code"    />
+        <result property="equipmentType"    column="equipment_type"    />
+        <result property="status"    column="status"    />
+        <result property="oee"    column="oee"    />
+        <result property="runHours"    column="run_hours"    />
+        <result property="location"    column="location"    />
+        <result property="lastCheckTime"    column="last_check_time"    />
+        <result property="remark"    column="remark"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectMesEquipmentVo">
+        select equipment_id,
+               equipment_code,
+               equipment_name,
+               line_code,
+               equipment_type,
+               status,
+               oee,
+               run_hours,
+               location,
+               last_check_time,
+               remark,
+               create_by,
+               create_time,
+               update_by,
+               update_time from mes_equipment
+    </sql>
+
+    <select id="selectMesEquipmentList" parameterType="com.ruoyi.mes.domain.MesEquipment" resultMap="MesEquipmentResult">
+        <include refid="selectMesEquipmentVo"/>
+        <where>
+            <if test="status != null and status != ''"> AND status = #{status}</if>
+            <if test="lineCode != null and lineCode != ''"> AND line_code = #{lineCode}</if>
+            <if test="equipmentType != null and equipmentType != ''"> AND equipment_type = #{equipmentType}</if>
+            <if test="params.keyword != null and params.keyword != ''">
+                AND (1 = 0
+            <if test="params.keyword != null and params.keyword != ''"> OR equipment_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR equipment_name like concat('%', #{params.keyword}, '%')</if>
+                )
+            </if>
+        </where>
+        order by equipment_id desc
+    </select>
+
+    <select id="selectMesEquipmentById" parameterType="Long" resultMap="MesEquipmentResult">
+        <include refid="selectMesEquipmentVo"/>
+        where equipment_id = #{equipmentId}
+    </select>
+
+    <insert id="insertMesEquipment" parameterType="com.ruoyi.mes.domain.MesEquipment" useGeneratedKeys="true" keyProperty="equipmentId">
+        insert into mes_equipment
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="equipmentCode != null">equipment_code,</if>
+            <if test="equipmentName != null">equipment_name,</if>
+            <if test="lineCode != null">line_code,</if>
+            <if test="equipmentType != null">equipment_type,</if>
+            <if test="status != null">status,</if>
+            <if test="oee != null">oee,</if>
+            <if test="runHours != null">run_hours,</if>
+            <if test="location != null">location,</if>
+            <if test="lastCheckTime != null">last_check_time,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="equipmentCode != null">#{equipmentCode},</if>
+            <if test="equipmentName != null">#{equipmentName},</if>
+            <if test="lineCode != null">#{lineCode},</if>
+            <if test="equipmentType != null">#{equipmentType},</if>
+            <if test="status != null">#{status},</if>
+            <if test="oee != null">#{oee},</if>
+            <if test="runHours != null">#{runHours},</if>
+            <if test="location != null">#{location},</if>
+            <if test="lastCheckTime != null">#{lastCheckTime},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            sysdate(),
+        </trim>
+    </insert>
+
+    <update id="updateMesEquipment" parameterType="com.ruoyi.mes.domain.MesEquipment">
+        update mes_equipment
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="equipmentCode != null">equipment_code = #{equipmentCode},</if>
+            <if test="equipmentName != null">equipment_name = #{equipmentName},</if>
+            <if test="lineCode != null">line_code = #{lineCode},</if>
+            <if test="equipmentType != null">equipment_type = #{equipmentType},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="oee != null">oee = #{oee},</if>
+            <if test="runHours != null">run_hours = #{runHours},</if>
+            <if test="location != null">location = #{location},</if>
+            <if test="lastCheckTime != null">last_check_time = #{lastCheckTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+        </trim>
+        where equipment_id = #{equipmentId}
+    </update>
+
+    <delete id="deleteMesEquipmentById" parameterType="Long">
+        delete from mes_equipment where equipment_id = #{equipmentId}
+    </delete>
+
+    <delete id="deleteMesEquipmentByIds" parameterType="String">
+        delete from mes_equipment where equipment_id in
+        <foreach item="equipmentId" collection="array" open="(" separator="," close=")">
+            #{equipmentId}
+        </foreach>
+    </delete>
+</mapper>

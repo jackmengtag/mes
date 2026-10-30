@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.mapper.MesShipmentMapper">
+
+    <resultMap type="com.ruoyi.mes.domain.MesShipment" id="MesShipmentResult">
+        <result property="shipmentId"    column="shipment_id"    />
+        <result property="shipmentCode"    column="shipment_code"    />
+        <result property="orderCode"    column="order_code"    />
+        <result property="customerName"    column="customer_name"    />
+        <result property="productCode"    column="product_code"    />
+        <result property="productName"    column="product_name"    />
+        <result property="qty"    column="qty"    />
+        <result property="price"    column="price"    />
+        <result property="amount"    column="amount"    />
+        <result property="warehouseCode"    column="warehouse_code"    />
+        <result property="shipDate"    column="ship_date"    />
+        <result property="status"    column="status"    />
+        <result property="remark"    column="remark"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectMesShipmentVo">
+        select shipment_id,
+               shipment_code,
+               order_code,
+               customer_name,
+               product_code,
+               product_name,
+               qty,
+               price,
+               amount,
+               warehouse_code,
+               ship_date,
+               status,
+               remark,
+               create_by,
+               create_time,
+               update_by,
+               update_time from mes_shipment
+    </sql>
+
+    <select id="selectMesShipmentList" parameterType="com.ruoyi.mes.domain.MesShipment" resultMap="MesShipmentResult">
+        <include refid="selectMesShipmentVo"/>
+        <where>
+            <if test="status != null and status != ''"> AND status = #{status}</if>
+            <if test="warehouseCode != null and warehouseCode != ''"> AND warehouse_code = #{warehouseCode}</if>
+            <if test="params.keyword != null and params.keyword != ''">
+                AND (1 = 0
+            <if test="params.keyword != null and params.keyword != ''"> OR shipment_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR order_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR customer_name like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR product_code like concat('%', #{params.keyword}, '%')</if>
+                )
+            </if>
+        </where>
+        order by shipment_id desc
+    </select>
+
+    <select id="selectMesShipmentById" parameterType="Long" resultMap="MesShipmentResult">
+        <include refid="selectMesShipmentVo"/>
+        where shipment_id = #{shipmentId}
+    </select>
+
+    <insert id="insertMesShipment" parameterType="com.ruoyi.mes.domain.MesShipment" useGeneratedKeys="true" keyProperty="shipmentId">
+        insert into mes_shipment
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="shipmentCode != null">shipment_code,</if>
+            <if test="orderCode != null">order_code,</if>
+            <if test="customerName != null">customer_name,</if>
+            <if test="productCode != null">product_code,</if>
+            <if test="productName != null">product_name,</if>
+            <if test="qty != null">qty,</if>
+            <if test="price != null">price,</if>
+            <if test="amount != null">amount,</if>
+            <if test="warehouseCode != null">warehouse_code,</if>
+            <if test="shipDate != null">ship_date,</if>
+            <if test="status != null">status,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="shipmentCode != null">#{shipmentCode},</if>
+            <if test="orderCode != null">#{orderCode},</if>
+            <if test="customerName != null">#{customerName},</if>
+            <if test="productCode != null">#{productCode},</if>
+            <if test="productName != null">#{productName},</if>
+            <if test="qty != null">#{qty},</if>
+            <if test="price != null">#{price},</if>
+            <if test="amount != null">#{amount},</if>
+            <if test="warehouseCode != null">#{warehouseCode},</if>
+            <if test="shipDate != null">#{shipDate},</if>
+            <if test="status != null">#{status},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            sysdate(),
+        </trim>
+    </insert>
+
+    <update id="updateMesShipment" parameterType="com.ruoyi.mes.domain.MesShipment">
+        update mes_shipment
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="shipmentCode != null">shipment_code = #{shipmentCode},</if>
+            <if test="orderCode != null">order_code = #{orderCode},</if>
+            <if test="customerName != null">customer_name = #{customerName},</if>
+            <if test="productCode != null">product_code = #{productCode},</if>
+            <if test="productName != null">product_name = #{productName},</if>
+            <if test="qty != null">qty = #{qty},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="warehouseCode != null">warehouse_code = #{warehouseCode},</if>
+            <if test="shipDate != null">ship_date = #{shipDate},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+        </trim>
+        where shipment_id = #{shipmentId}
+    </update>
+
+    <delete id="deleteMesShipmentById" parameterType="Long">
+        delete from mes_shipment where shipment_id = #{shipmentId}
+    </delete>
+
+    <delete id="deleteMesShipmentByIds" parameterType="String">
+        delete from mes_shipment where shipment_id in
+        <foreach item="shipmentId" collection="array" open="(" separator="," close=")">
+            #{shipmentId}
+        </foreach>
+    </delete>
+</mapper>

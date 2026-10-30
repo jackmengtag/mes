@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.mapper.MesTraceMapper">
+
+    <resultMap type="com.ruoyi.mes.domain.MesTrace" id="MesTraceResult">
+        <result property="traceId"    column="trace_id"    />
+        <result property="serialNo"    column="serial_no"    />
+        <result property="batchNo"    column="batch_no"    />
+        <result property="productCode"    column="product_code"    />
+        <result property="productName"    column="product_name"    />
+        <result property="orderCode"    column="order_code"    />
+        <result property="station"    column="station"    />
+        <result property="keyMaterial"    column="key_material"    />
+        <result property="supplierBatch"    column="supplier_batch"    />
+        <result property="inspectionResult"    column="inspection_result"    />
+        <result property="producedTime"    column="produced_time"    />
+        <result property="status"    column="status"    />
+        <result property="remark"    column="remark"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectMesTraceVo">
+        select trace_id,
+               serial_no,
+               batch_no,
+               product_code,
+               product_name,
+               order_code,
+               station,
+               key_material,
+               supplier_batch,
+               inspection_result,
+               produced_time,
+               status,
+               remark,
+               create_by,
+               create_time,
+               update_by,
+               update_time from mes_trace
+    </sql>
+
+    <select id="selectMesTraceList" parameterType="com.ruoyi.mes.domain.MesTrace" resultMap="MesTraceResult">
+        <include refid="selectMesTraceVo"/>
+        <where>
+            <if test="status != null and status != ''"> AND status = #{status}</if>
+            <if test="inspectionResult != null and inspectionResult != ''"> AND inspection_result = #{inspectionResult}</if>
+            <if test="params.keyword != null and params.keyword != ''">
+                AND (1 = 0
+            <if test="params.keyword != null and params.keyword != ''"> OR serial_no like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR batch_no like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR order_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR product_code like concat('%', #{params.keyword}, '%')</if>
+                )
+            </if>
+        </where>
+        order by trace_id desc
+    </select>
+
+    <select id="selectMesTraceById" parameterType="Long" resultMap="MesTraceResult">
+        <include refid="selectMesTraceVo"/>
+        where trace_id = #{traceId}
+    </select>
+
+    <insert id="insertMesTrace" parameterType="com.ruoyi.mes.domain.MesTrace" useGeneratedKeys="true" keyProperty="traceId">
+        insert into mes_trace
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="serialNo != null">serial_no,</if>
+            <if test="batchNo != null">batch_no,</if>
+            <if test="productCode != null">product_code,</if>
+            <if test="productName != null">product_name,</if>
+            <if test="orderCode != null">order_code,</if>
+            <if test="station != null">station,</if>
+            <if test="keyMaterial != null">key_material,</if>
+            <if test="supplierBatch != null">supplier_batch,</if>
+            <if test="inspectionResult != null">inspection_result,</if>
+            <if test="producedTime != null">produced_time,</if>
+            <if test="status != null">status,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="serialNo != null">#{serialNo},</if>
+            <if test="batchNo != null">#{batchNo},</if>
+            <if test="productCode != null">#{productCode},</if>
+            <if test="productName != null">#{productName},</if>
+            <if test="orderCode != null">#{orderCode},</if>
+            <if test="station != null">#{station},</if>
+            <if test="keyMaterial != null">#{keyMaterial},</if>
+            <if test="supplierBatch != null">#{supplierBatch},</if>
+            <if test="inspectionResult != null">#{inspectionResult},</if>
+            <if test="producedTime != null">#{producedTime},</if>
+            <if test="status != null">#{status},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            sysdate(),
+        </trim>
+    </insert>
+
+    <update id="updateMesTrace" parameterType="com.ruoyi.mes.domain.MesTrace">
+        update mes_trace
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="serialNo != null">serial_no = #{serialNo},</if>
+            <if test="batchNo != null">batch_no = #{batchNo},</if>
+            <if test="productCode != null">product_code = #{productCode},</if>
+            <if test="productName != null">product_name = #{productName},</if>
+            <if test="orderCode != null">order_code = #{orderCode},</if>
+            <if test="station != null">station = #{station},</if>
+            <if test="keyMaterial != null">key_material = #{keyMaterial},</if>
+            <if test="supplierBatch != null">supplier_batch = #{supplierBatch},</if>
+            <if test="inspectionResult != null">inspection_result = #{inspectionResult},</if>
+            <if test="producedTime != null">produced_time = #{producedTime},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+        </trim>
+        where trace_id = #{traceId}
+    </update>
+
+    <delete id="deleteMesTraceById" parameterType="Long">
+        delete from mes_trace where trace_id = #{traceId}
+    </delete>
+
+    <delete id="deleteMesTraceByIds" parameterType="String">
+        delete from mes_trace where trace_id in
+        <foreach item="traceId" collection="array" open="(" separator="," close=")">
+            #{traceId}
+        </foreach>
+    </delete>
+</mapper>

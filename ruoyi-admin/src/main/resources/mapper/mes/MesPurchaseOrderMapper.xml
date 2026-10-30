@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.mapper.MesPurchaseOrderMapper">
+
+    <resultMap type="com.ruoyi.mes.domain.MesPurchaseOrder" id="MesPurchaseOrderResult">
+        <result property="purchaseId"    column="purchase_id"    />
+        <result property="orderCode"    column="order_code"    />
+        <result property="supplierCode"    column="supplier_code"    />
+        <result property="supplierName"    column="supplier_name"    />
+        <result property="materialCode"    column="material_code"    />
+        <result property="materialName"    column="material_name"    />
+        <result property="qty"    column="qty"    />
+        <result property="receivedQty"    column="received_qty"    />
+        <result property="price"    column="price"    />
+        <result property="amount"    column="amount"    />
+        <result property="status"    column="status"    />
+        <result property="orderDate"    column="order_date"    />
+        <result property="expectDate"    column="expect_date"    />
+        <result property="remark"    column="remark"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectMesPurchaseOrderVo">
+        select purchase_id,
+               order_code,
+               supplier_code,
+               supplier_name,
+               material_code,
+               material_name,
+               qty,
+               received_qty,
+               price,
+               amount,
+               status,
+               order_date,
+               expect_date,
+               remark,
+               create_by,
+               create_time,
+               update_by,
+               update_time from mes_purchase_order
+    </sql>
+
+    <select id="selectMesPurchaseOrderList" parameterType="com.ruoyi.mes.domain.MesPurchaseOrder" resultMap="MesPurchaseOrderResult">
+        <include refid="selectMesPurchaseOrderVo"/>
+        <where>
+            <if test="status != null and status != ''"> AND status = #{status}</if>
+            <if test="supplierCode != null and supplierCode != ''"> AND supplier_code = #{supplierCode}</if>
+            <if test="params.keyword != null and params.keyword != ''">
+                AND (1 = 0
+            <if test="params.keyword != null and params.keyword != ''"> OR order_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR supplier_name like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR material_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR material_name like concat('%', #{params.keyword}, '%')</if>
+                )
+            </if>
+        </where>
+        order by purchase_id desc
+    </select>
+
+    <select id="selectMesPurchaseOrderById" parameterType="Long" resultMap="MesPurchaseOrderResult">
+        <include refid="selectMesPurchaseOrderVo"/>
+        where purchase_id = #{purchaseId}
+    </select>
+
+    <insert id="insertMesPurchaseOrder" parameterType="com.ruoyi.mes.domain.MesPurchaseOrder" useGeneratedKeys="true" keyProperty="purchaseId">
+        insert into mes_purchase_order
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="orderCode != null">order_code,</if>
+            <if test="supplierCode != null">supplier_code,</if>
+            <if test="supplierName != null">supplier_name,</if>
+            <if test="materialCode != null">material_code,</if>
+            <if test="materialName != null">material_name,</if>
+            <if test="qty != null">qty,</if>
+            <if test="receivedQty != null">received_qty,</if>
+            <if test="price != null">price,</if>
+            <if test="amount != null">amount,</if>
+            <if test="status != null">status,</if>
+            <if test="orderDate != null">order_date,</if>
+            <if test="expectDate != null">expect_date,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="orderCode != null">#{orderCode},</if>
+            <if test="supplierCode != null">#{supplierCode},</if>
+            <if test="supplierName != null">#{supplierName},</if>
+            <if test="materialCode != null">#{materialCode},</if>
+            <if test="materialName != null">#{materialName},</if>
+            <if test="qty != null">#{qty},</if>
+            <if test="receivedQty != null">#{receivedQty},</if>
+            <if test="price != null">#{price},</if>
+            <if test="amount != null">#{amount},</if>
+            <if test="status != null">#{status},</if>
+            <if test="orderDate != null">#{orderDate},</if>
+            <if test="expectDate != null">#{expectDate},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            sysdate(),
+        </trim>
+    </insert>
+
+    <update id="updateMesPurchaseOrder" parameterType="com.ruoyi.mes.domain.MesPurchaseOrder">
+        update mes_purchase_order
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="orderCode != null">order_code = #{orderCode},</if>
+            <if test="supplierCode != null">supplier_code = #{supplierCode},</if>
+            <if test="supplierName != null">supplier_name = #{supplierName},</if>
+            <if test="materialCode != null">material_code = #{materialCode},</if>
+            <if test="materialName != null">material_name = #{materialName},</if>
+            <if test="qty != null">qty = #{qty},</if>
+            <if test="receivedQty != null">received_qty = #{receivedQty},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="orderDate != null">order_date = #{orderDate},</if>
+            <if test="expectDate != null">expect_date = #{expectDate},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+        </trim>
+        where purchase_id = #{purchaseId}
+    </update>
+
+    <delete id="deleteMesPurchaseOrderById" parameterType="Long">
+        delete from mes_purchase_order where purchase_id = #{purchaseId}
+    </delete>
+
+    <delete id="deleteMesPurchaseOrderByIds" parameterType="String">
+        delete from mes_purchase_order where purchase_id in
+        <foreach item="purchaseId" collection="array" open="(" separator="," close=")">
+            #{purchaseId}
+        </foreach>
+    </delete>
+</mapper>

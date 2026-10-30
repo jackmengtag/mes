@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.mapper.MesCustomerMapper">
+
+    <resultMap type="com.ruoyi.mes.domain.MesCustomer" id="MesCustomerResult">
+        <result property="customerId"    column="customer_id"    />
+        <result property="customerCode"    column="customer_code"    />
+        <result property="customerName"    column="customer_name"    />
+        <result property="contact"    column="contact"    />
+        <result property="phone"    column="phone"    />
+        <result property="creditLimit"    column="credit_limit"    />
+        <result property="status"    column="status"    />
+        <result property="remark"    column="remark"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectMesCustomerVo">
+        select customer_id,
+               customer_code,
+               customer_name,
+               contact,
+               phone,
+               credit_limit,
+               status,
+               remark,
+               create_by,
+               create_time,
+               update_by,
+               update_time from mes_customer
+    </sql>
+
+    <select id="selectMesCustomerList" parameterType="com.ruoyi.mes.domain.MesCustomer" resultMap="MesCustomerResult">
+        <include refid="selectMesCustomerVo"/>
+        <where>
+            <if test="status != null and status != ''"> AND status = #{status}</if>
+            <if test="params.keyword != null and params.keyword != ''">
+                AND (1 = 0
+            <if test="params.keyword != null and params.keyword != ''"> OR customer_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR customer_name like concat('%', #{params.keyword}, '%')</if>
+                )
+            </if>
+        </where>
+        order by customer_id desc
+    </select>
+
+    <select id="selectMesCustomerById" parameterType="Long" resultMap="MesCustomerResult">
+        <include refid="selectMesCustomerVo"/>
+        where customer_id = #{customerId}
+    </select>
+
+    <insert id="insertMesCustomer" parameterType="com.ruoyi.mes.domain.MesCustomer" useGeneratedKeys="true" keyProperty="customerId">
+        insert into mes_customer
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="customerCode != null">customer_code,</if>
+            <if test="customerName != null">customer_name,</if>
+            <if test="contact != null">contact,</if>
+            <if test="phone != null">phone,</if>
+            <if test="creditLimit != null">credit_limit,</if>
+            <if test="status != null">status,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="customerCode != null">#{customerCode},</if>
+            <if test="customerName != null">#{customerName},</if>
+            <if test="contact != null">#{contact},</if>
+            <if test="phone != null">#{phone},</if>
+            <if test="creditLimit != null">#{creditLimit},</if>
+            <if test="status != null">#{status},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            sysdate(),
+        </trim>
+    </insert>
+
+    <update id="updateMesCustomer" parameterType="com.ruoyi.mes.domain.MesCustomer">
+        update mes_customer
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="customerCode != null">customer_code = #{customerCode},</if>
+            <if test="customerName != null">customer_name = #{customerName},</if>
+            <if test="contact != null">contact = #{contact},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="creditLimit != null">credit_limit = #{creditLimit},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+        </trim>
+        where customer_id = #{customerId}
+    </update>
+
+    <delete id="deleteMesCustomerById" parameterType="Long">
+        delete from mes_customer where customer_id = #{customerId}
+    </delete>
+
+    <delete id="deleteMesCustomerByIds" parameterType="String">
+        delete from mes_customer where customer_id in
+        <foreach item="customerId" collection="array" open="(" separator="," close=")">
+            #{customerId}
+        </foreach>
+    </delete>
+</mapper>

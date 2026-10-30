@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.mapper.MesAlarmMapper">
+
+    <resultMap type="com.ruoyi.mes.domain.MesAlarm" id="MesAlarmResult">
+        <result property="alarmId"    column="alarm_id"    />
+        <result property="alarmCode"    column="alarm_code"    />
+        <result property="equipmentCode"    column="equipment_code"    />
+        <result property="equipmentName"    column="equipment_name"    />
+        <result property="level"    column="level"    />
+        <result property="content"    column="content"    />
+        <result property="alarmTime"    column="alarm_time"    />
+        <result property="status"    column="status"    />
+        <result property="handler"    column="handler"    />
+        <result property="remark"    column="remark"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectMesAlarmVo">
+        select alarm_id,
+               alarm_code,
+               equipment_code,
+               equipment_name,
+               level,
+               content,
+               alarm_time,
+               status,
+               handler,
+               remark,
+               create_by,
+               create_time,
+               update_by,
+               update_time from mes_alarm
+    </sql>
+
+    <select id="selectMesAlarmList" parameterType="com.ruoyi.mes.domain.MesAlarm" resultMap="MesAlarmResult">
+        <include refid="selectMesAlarmVo"/>
+        <where>
+            <if test="status != null and status != ''"> AND status = #{status}</if>
+            <if test="level != null and level != ''"> AND level = #{level}</if>
+            <if test="params.keyword != null and params.keyword != ''">
+                AND (1 = 0
+            <if test="params.keyword != null and params.keyword != ''"> OR alarm_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR equipment_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR content like concat('%', #{params.keyword}, '%')</if>
+                )
+            </if>
+        </where>
+        order by alarm_id desc
+    </select>
+
+    <select id="selectMesAlarmById" parameterType="Long" resultMap="MesAlarmResult">
+        <include refid="selectMesAlarmVo"/>
+        where alarm_id = #{alarmId}
+    </select>
+
+    <insert id="insertMesAlarm" parameterType="com.ruoyi.mes.domain.MesAlarm" useGeneratedKeys="true" keyProperty="alarmId">
+        insert into mes_alarm
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="alarmCode != null">alarm_code,</if>
+            <if test="equipmentCode != null">equipment_code,</if>
+            <if test="equipmentName != null">equipment_name,</if>
+            <if test="level != null">level,</if>
+            <if test="content != null">content,</if>
+            <if test="alarmTime != null">alarm_time,</if>
+            <if test="status != null">status,</if>
+            <if test="handler != null">handler,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="alarmCode != null">#{alarmCode},</if>
+            <if test="equipmentCode != null">#{equipmentCode},</if>
+            <if test="equipmentName != null">#{equipmentName},</if>
+            <if test="level != null">#{level},</if>
+            <if test="content != null">#{content},</if>
+            <if test="alarmTime != null">#{alarmTime},</if>
+            <if test="status != null">#{status},</if>
+            <if test="handler != null">#{handler},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            sysdate(),
+        </trim>
+    </insert>
+
+    <update id="updateMesAlarm" parameterType="com.ruoyi.mes.domain.MesAlarm">
+        update mes_alarm
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="alarmCode != null">alarm_code = #{alarmCode},</if>
+            <if test="equipmentCode != null">equipment_code = #{equipmentCode},</if>
+            <if test="equipmentName != null">equipment_name = #{equipmentName},</if>
+            <if test="level != null">level = #{level},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="alarmTime != null">alarm_time = #{alarmTime},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="handler != null">handler = #{handler},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+        </trim>
+        where alarm_id = #{alarmId}
+    </update>
+
+    <delete id="deleteMesAlarmById" parameterType="Long">
+        delete from mes_alarm where alarm_id = #{alarmId}
+    </delete>
+
+    <delete id="deleteMesAlarmByIds" parameterType="String">
+        delete from mes_alarm where alarm_id in
+        <foreach item="alarmId" collection="array" open="(" separator="," close=")">
+            #{alarmId}
+        </foreach>
+    </delete>
+</mapper>

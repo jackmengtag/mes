@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.mapper.MesQualityIssueMapper">
+
+    <resultMap type="com.ruoyi.mes.domain.MesQualityIssue" id="MesQualityIssueResult">
+        <result property="issueId"    column="issue_id"    />
+        <result property="issueCode"    column="issue_code"    />
+        <result property="sourceType"    column="source_type"    />
+        <result property="sourceCode"    column="source_code"    />
+        <result property="productCode"    column="product_code"    />
+        <result property="batchNo"    column="batch_no"    />
+        <result property="serialNo"    column="serial_no"    />
+        <result property="issueType"    column="issue_type"    />
+        <result property="severity"    column="severity"    />
+        <result property="qty"    column="qty"    />
+        <result property="description"    column="description"    />
+        <result property="dispose"    column="dispose"    />
+        <result property="status"    column="status"    />
+        <result property="handler"    column="handler"    />
+        <result property="foundTime"    column="found_time"    />
+        <result property="closeTime"    column="close_time"    />
+        <result property="remark"    column="remark"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectMesQualityIssueVo">
+        select issue_id,
+               issue_code,
+               source_type,
+               source_code,
+               product_code,
+               batch_no,
+               serial_no,
+               issue_type,
+               severity,
+               qty,
+               description,
+               dispose,
+               status,
+               handler,
+               found_time,
+               close_time,
+               remark,
+               create_by,
+               create_time,
+               update_by,
+               update_time from mes_quality_issue
+    </sql>
+
+    <select id="selectMesQualityIssueList" parameterType="com.ruoyi.mes.domain.MesQualityIssue" resultMap="MesQualityIssueResult">
+        <include refid="selectMesQualityIssueVo"/>
+        <where>
+            <if test="status != null and status != ''"> AND status = #{status}</if>
+            <if test="severity != null and severity != ''"> AND severity = #{severity}</if>
+            <if test="sourceType != null and sourceType != ''"> AND source_type = #{sourceType}</if>
+            <if test="params.keyword != null and params.keyword != ''">
+                AND (1 = 0
+            <if test="params.keyword != null and params.keyword != ''"> OR issue_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR product_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR batch_no like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR serial_no like concat('%', #{params.keyword}, '%')</if>
+                )
+            </if>
+        </where>
+        order by issue_id desc
+    </select>
+
+    <select id="selectMesQualityIssueById" parameterType="Long" resultMap="MesQualityIssueResult">
+        <include refid="selectMesQualityIssueVo"/>
+        where issue_id = #{issueId}
+    </select>
+
+    <insert id="insertMesQualityIssue" parameterType="com.ruoyi.mes.domain.MesQualityIssue" useGeneratedKeys="true" keyProperty="issueId">
+        insert into mes_quality_issue
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="issueCode != null">issue_code,</if>
+            <if test="sourceType != null">source_type,</if>
+            <if test="sourceCode != null">source_code,</if>
+            <if test="productCode != null">product_code,</if>
+            <if test="batchNo != null">batch_no,</if>
+            <if test="serialNo != null">serial_no,</if>
+            <if test="issueType != null">issue_type,</if>
+            <if test="severity != null">severity,</if>
+            <if test="qty != null">qty,</if>
+            <if test="description != null">description,</if>
+            <if test="dispose != null">dispose,</if>
+            <if test="status != null">status,</if>
+            <if test="handler != null">handler,</if>
+            <if test="foundTime != null">found_time,</if>
+            <if test="closeTime != null">close_time,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="issueCode != null">#{issueCode},</if>
+            <if test="sourceType != null">#{sourceType},</if>
+            <if test="sourceCode != null">#{sourceCode},</if>
+            <if test="productCode != null">#{productCode},</if>
+            <if test="batchNo != null">#{batchNo},</if>
+            <if test="serialNo != null">#{serialNo},</if>
+            <if test="issueType != null">#{issueType},</if>
+            <if test="severity != null">#{severity},</if>
+            <if test="qty != null">#{qty},</if>
+            <if test="description != null">#{description},</if>
+            <if test="dispose != null">#{dispose},</if>
+            <if test="status != null">#{status},</if>
+            <if test="handler != null">#{handler},</if>
+            <if test="foundTime != null">#{foundTime},</if>
+            <if test="closeTime != null">#{closeTime},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            sysdate(),
+        </trim>
+    </insert>
+
+    <update id="updateMesQualityIssue" parameterType="com.ruoyi.mes.domain.MesQualityIssue">
+        update mes_quality_issue
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="issueCode != null">issue_code = #{issueCode},</if>
+            <if test="sourceType != null">source_type = #{sourceType},</if>
+            <if test="sourceCode != null">source_code = #{sourceCode},</if>
+            <if test="productCode != null">product_code = #{productCode},</if>
+            <if test="batchNo != null">batch_no = #{batchNo},</if>
+            <if test="serialNo != null">serial_no = #{serialNo},</if>
+            <if test="issueType != null">issue_type = #{issueType},</if>
+            <if test="severity != null">severity = #{severity},</if>
+            <if test="qty != null">qty = #{qty},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="dispose != null">dispose = #{dispose},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="handler != null">handler = #{handler},</if>
+            <if test="foundTime != null">found_time = #{foundTime},</if>
+            <if test="closeTime != null">close_time = #{closeTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+        </trim>
+        where issue_id = #{issueId}
+    </update>
+
+    <delete id="deleteMesQualityIssueById" parameterType="Long">
+        delete from mes_quality_issue where issue_id = #{issueId}
+    </delete>
+
+    <delete id="deleteMesQualityIssueByIds" parameterType="String">
+        delete from mes_quality_issue where issue_id in
+        <foreach item="issueId" collection="array" open="(" separator="," close=")">
+            #{issueId}
+        </foreach>
+    </delete>
+</mapper>

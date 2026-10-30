@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.mapper.MesVoucherMapper">
+
+    <resultMap type="com.ruoyi.mes.domain.MesVoucher" id="MesVoucherResult">
+        <result property="voucherId"    column="voucher_id"    />
+        <result property="voucherCode"    column="voucher_code"    />
+        <result property="bizType"    column="biz_type"    />
+        <result property="bizCode"    column="biz_code"    />
+        <result property="qty"    column="qty"    />
+        <result property="amount"    column="amount"    />
+        <result property="accountPeriod"    column="account_period"    />
+        <result property="status"    column="status"    />
+        <result property="u8cStatus"    column="u8c_status"    />
+        <result property="syncTime"    column="sync_time"    />
+        <result property="message"    column="message"    />
+        <result property="remark"    column="remark"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectMesVoucherVo">
+        select voucher_id,
+               voucher_code,
+               biz_type,
+               biz_code,
+               qty,
+               amount,
+               account_period,
+               status,
+               u8c_status,
+               sync_time,
+               message,
+               remark,
+               create_by,
+               create_time,
+               update_by,
+               update_time from mes_voucher
+    </sql>
+
+    <select id="selectMesVoucherList" parameterType="com.ruoyi.mes.domain.MesVoucher" resultMap="MesVoucherResult">
+        <include refid="selectMesVoucherVo"/>
+        <where>
+            <if test="status != null and status != ''"> AND status = #{status}</if>
+            <if test="u8cStatus != null and u8cStatus != ''"> AND u8c_status = #{u8cStatus}</if>
+            <if test="bizType != null and bizType != ''"> AND biz_type = #{bizType}</if>
+            <if test="accountPeriod != null and accountPeriod != ''"> AND account_period = #{accountPeriod}</if>
+            <if test="params.keyword != null and params.keyword != ''">
+                AND (1 = 0
+            <if test="params.keyword != null and params.keyword != ''"> OR voucher_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR biz_code like concat('%', #{params.keyword}, '%')</if>
+                )
+            </if>
+        </where>
+        order by voucher_id desc
+    </select>
+
+    <select id="selectMesVoucherById" parameterType="Long" resultMap="MesVoucherResult">
+        <include refid="selectMesVoucherVo"/>
+        where voucher_id = #{voucherId}
+    </select>
+
+    <insert id="insertMesVoucher" parameterType="com.ruoyi.mes.domain.MesVoucher" useGeneratedKeys="true" keyProperty="voucherId">
+        insert into mes_voucher
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="voucherCode != null">voucher_code,</if>
+            <if test="bizType != null">biz_type,</if>
+            <if test="bizCode != null">biz_code,</if>
+            <if test="qty != null">qty,</if>
+            <if test="amount != null">amount,</if>
+            <if test="accountPeriod != null">account_period,</if>
+            <if test="status != null">status,</if>
+            <if test="u8cStatus != null">u8c_status,</if>
+            <if test="syncTime != null">sync_time,</if>
+            <if test="message != null">message,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="voucherCode != null">#{voucherCode},</if>
+            <if test="bizType != null">#{bizType},</if>
+            <if test="bizCode != null">#{bizCode},</if>
+            <if test="qty != null">#{qty},</if>
+            <if test="amount != null">#{amount},</if>
+            <if test="accountPeriod != null">#{accountPeriod},</if>
+            <if test="status != null">#{status},</if>
+            <if test="u8cStatus != null">#{u8cStatus},</if>
+            <if test="syncTime != null">#{syncTime},</if>
+            <if test="message != null">#{message},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            sysdate(),
+        </trim>
+    </insert>
+
+    <update id="updateMesVoucher" parameterType="com.ruoyi.mes.domain.MesVoucher">
+        update mes_voucher
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="voucherCode != null">voucher_code = #{voucherCode},</if>
+            <if test="bizType != null">biz_type = #{bizType},</if>
+            <if test="bizCode != null">biz_code = #{bizCode},</if>
+            <if test="qty != null">qty = #{qty},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="accountPeriod != null">account_period = #{accountPeriod},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="u8cStatus != null">u8c_status = #{u8cStatus},</if>
+            <if test="syncTime != null">sync_time = #{syncTime},</if>
+            <if test="message != null">message = #{message},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+        </trim>
+        where voucher_id = #{voucherId}
+    </update>
+
+    <delete id="deleteMesVoucherById" parameterType="Long">
+        delete from mes_voucher where voucher_id = #{voucherId}
+    </delete>
+
+    <delete id="deleteMesVoucherByIds" parameterType="String">
+        delete from mes_voucher where voucher_id in
+        <foreach item="voucherId" collection="array" open="(" separator="," close=")">
+            #{voucherId}
+        </foreach>
+    </delete>
+</mapper>

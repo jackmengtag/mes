@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.mapper.MesSalesOrderMapper">
+
+    <resultMap type="com.ruoyi.mes.domain.MesSalesOrder" id="MesSalesOrderResult">
+        <result property="salesId"    column="sales_id"    />
+        <result property="orderCode"    column="order_code"    />
+        <result property="customerCode"    column="customer_code"    />
+        <result property="customerName"    column="customer_name"    />
+        <result property="productCode"    column="product_code"    />
+        <result property="productName"    column="product_name"    />
+        <result property="qty"    column="qty"    />
+        <result property="shippedQty"    column="shipped_qty"    />
+        <result property="price"    column="price"    />
+        <result property="amount"    column="amount"    />
+        <result property="status"    column="status"    />
+        <result property="orderDate"    column="order_date"    />
+        <result property="deliveryDate"    column="delivery_date"    />
+        <result property="remark"    column="remark"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectMesSalesOrderVo">
+        select sales_id,
+               order_code,
+               customer_code,
+               customer_name,
+               product_code,
+               product_name,
+               qty,
+               shipped_qty,
+               price,
+               amount,
+               status,
+               order_date,
+               delivery_date,
+               remark,
+               create_by,
+               create_time,
+               update_by,
+               update_time from mes_sales_order
+    </sql>
+
+    <select id="selectMesSalesOrderList" parameterType="com.ruoyi.mes.domain.MesSalesOrder" resultMap="MesSalesOrderResult">
+        <include refid="selectMesSalesOrderVo"/>
+        <where>
+            <if test="status != null and status != ''"> AND status = #{status}</if>
+            <if test="customerCode != null and customerCode != ''"> AND customer_code = #{customerCode}</if>
+            <if test="params.keyword != null and params.keyword != ''">
+                AND (1 = 0
+            <if test="params.keyword != null and params.keyword != ''"> OR order_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR customer_name like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR product_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR product_name like concat('%', #{params.keyword}, '%')</if>
+                )
+            </if>
+        </where>
+        order by sales_id desc
+    </select>
+
+    <select id="selectMesSalesOrderById" parameterType="Long" resultMap="MesSalesOrderResult">
+        <include refid="selectMesSalesOrderVo"/>
+        where sales_id = #{salesId}
+    </select>
+
+    <insert id="insertMesSalesOrder" parameterType="com.ruoyi.mes.domain.MesSalesOrder" useGeneratedKeys="true" keyProperty="salesId">
+        insert into mes_sales_order
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="orderCode != null">order_code,</if>
+            <if test="customerCode != null">customer_code,</if>
+            <if test="customerName != null">customer_name,</if>
+            <if test="productCode != null">product_code,</if>
+            <if test="productName != null">product_name,</if>
+            <if test="qty != null">qty,</if>
+            <if test="shippedQty != null">shipped_qty,</if>
+            <if test="price != null">price,</if>
+            <if test="amount != null">amount,</if>
+            <if test="status != null">status,</if>
+            <if test="orderDate != null">order_date,</if>
+            <if test="deliveryDate != null">delivery_date,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="orderCode != null">#{orderCode},</if>
+            <if test="customerCode != null">#{customerCode},</if>
+            <if test="customerName != null">#{customerName},</if>
+            <if test="productCode != null">#{productCode},</if>
+            <if test="productName != null">#{productName},</if>
+            <if test="qty != null">#{qty},</if>
+            <if test="shippedQty != null">#{shippedQty},</if>
+            <if test="price != null">#{price},</if>
+            <if test="amount != null">#{amount},</if>
+            <if test="status != null">#{status},</if>
+            <if test="orderDate != null">#{orderDate},</if>
+            <if test="deliveryDate != null">#{deliveryDate},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            sysdate(),
+        </trim>
+    </insert>
+
+    <update id="updateMesSalesOrder" parameterType="com.ruoyi.mes.domain.MesSalesOrder">
+        update mes_sales_order
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="orderCode != null">order_code = #{orderCode},</if>
+            <if test="customerCode != null">customer_code = #{customerCode},</if>
+            <if test="customerName != null">customer_name = #{customerName},</if>
+            <if test="productCode != null">product_code = #{productCode},</if>
+            <if test="productName != null">product_name = #{productName},</if>
+            <if test="qty != null">qty = #{qty},</if>
+            <if test="shippedQty != null">shipped_qty = #{shippedQty},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="orderDate != null">order_date = #{orderDate},</if>
+            <if test="deliveryDate != null">delivery_date = #{deliveryDate},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+        </trim>
+        where sales_id = #{salesId}
+    </update>
+
+    <delete id="deleteMesSalesOrderById" parameterType="Long">
+        delete from mes_sales_order where sales_id = #{salesId}
+    </delete>
+
+    <delete id="deleteMesSalesOrderByIds" parameterType="String">
+        delete from mes_sales_order where sales_id in
+        <foreach item="salesId" collection="array" open="(" separator="," close=")">
+            #{salesId}
+        </foreach>
+    </delete>
+</mapper>

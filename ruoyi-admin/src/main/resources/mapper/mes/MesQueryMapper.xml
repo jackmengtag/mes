@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.mapper.MesQueryMapper">
+
+    <select id="selectPurchaseByCode" resultMap="com.ruoyi.mes.mapper.MesPurchaseOrderMapper.MesPurchaseOrderResult">
+        select * from mes_purchase_order where order_code = #{orderCode} limit 1
+    </select>
+
+    <select id="selectSalesByCode" resultMap="com.ruoyi.mes.mapper.MesSalesOrderMapper.MesSalesOrderResult">
+        select * from mes_sales_order where order_code = #{orderCode} limit 1
+    </select>
+
+    <select id="selectWorkOrderByCode" resultMap="com.ruoyi.mes.mapper.MesWorkOrderMapper.MesWorkOrderResult">
+        select * from mes_work_order where order_code = #{orderCode} limit 1
+    </select>
+
+    <select id="selectStockByKey" resultMap="com.ruoyi.mes.mapper.MesStockMapper.MesStockResult">
+        select * from mes_stock
+        where material_code = #{materialCode} and warehouse_code = #{warehouseCode} and batch_no = #{batchNo}
+        limit 1
+    </select>
+
+    <select id="selectStockByMaterial" resultMap="com.ruoyi.mes.mapper.MesStockMapper.MesStockResult">
+        select * from mes_stock
+        where material_code = #{materialCode} and warehouse_code = #{warehouseCode} and qty &gt; 0
+        order by qty desc
+    </select>
+
+    <select id="selectTraceByKeyword" resultMap="com.ruoyi.mes.mapper.MesTraceMapper.MesTraceResult">
+        select * from mes_trace
+        where serial_no = #{keyword} or batch_no = #{keyword}
+        order by trace_id desc limit 1
+    </select>
+
+    <select id="selectTraceListByBatch" resultMap="com.ruoyi.mes.mapper.MesTraceMapper.MesTraceResult">
+        select * from mes_trace where batch_no = #{batchNo} order by trace_id
+    </select>
+
+    <select id="selectReportsByOrder" resultMap="com.ruoyi.mes.mapper.MesReportMapper.MesReportResult">
+        select * from mes_report where order_code = #{orderCode} order by report_time
+    </select>
+
+    <select id="selectIssuesByKeyword" resultMap="com.ruoyi.mes.mapper.MesQualityIssueMapper.MesQualityIssueResult">
+        select * from mes_quality_issue
+        where serial_no = #{keyword} or batch_no = #{keyword}
+        order by issue_id desc
+    </select>
+</mapper>

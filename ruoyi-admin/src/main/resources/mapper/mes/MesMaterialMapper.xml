@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.mapper.MesMaterialMapper">
+
+    <resultMap type="com.ruoyi.mes.domain.MesMaterial" id="MesMaterialResult">
+        <result property="materialId"    column="material_id"    />
+        <result property="materialCode"    column="material_code"    />
+        <result property="materialName"    column="material_name"    />
+        <result property="spec"    column="spec"    />
+        <result property="unit"    column="unit"    />
+        <result property="category"    column="category"    />
+        <result property="productFlag"    column="product_flag"    />
+        <result property="safetyStock"    column="safety_stock"    />
+        <result property="maxStock"    column="max_stock"    />
+        <result property="price"    column="price"    />
+        <result property="status"    column="status"    />
+        <result property="remark"    column="remark"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectMesMaterialVo">
+        select material_id,
+               material_code,
+               material_name,
+               spec,
+               unit,
+               category,
+               product_flag,
+               safety_stock,
+               max_stock,
+               price,
+               status,
+               remark,
+               create_by,
+               create_time,
+               update_by,
+               update_time from mes_material
+    </sql>
+
+    <select id="selectMesMaterialList" parameterType="com.ruoyi.mes.domain.MesMaterial" resultMap="MesMaterialResult">
+        <include refid="selectMesMaterialVo"/>
+        <where>
+            <if test="status != null and status != ''"> AND status = #{status}</if>
+            <if test="category != null and category != ''"> AND category = #{category}</if>
+            <if test="productFlag != null and productFlag != ''"> AND product_flag = #{productFlag}</if>
+            <if test="params.keyword != null and params.keyword != ''">
+                AND (1 = 0
+            <if test="params.keyword != null and params.keyword != ''"> OR material_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR material_name like concat('%', #{params.keyword}, '%')</if>
+                )
+            </if>
+        </where>
+        order by material_id desc
+    </select>
+
+    <select id="selectMesMaterialById" parameterType="Long" resultMap="MesMaterialResult">
+        <include refid="selectMesMaterialVo"/>
+        where material_id = #{materialId}
+    </select>
+
+    <insert id="insertMesMaterial" parameterType="com.ruoyi.mes.domain.MesMaterial" useGeneratedKeys="true" keyProperty="materialId">
+        insert into mes_material
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="materialCode != null">material_code,</if>
+            <if test="materialName != null">material_name,</if>
+            <if test="spec != null">spec,</if>
+            <if test="unit != null">unit,</if>
+            <if test="category != null">category,</if>
+            <if test="productFlag != null">product_flag,</if>
+            <if test="safetyStock != null">safety_stock,</if>
+            <if test="maxStock != null">max_stock,</if>
+            <if test="price != null">price,</if>
+            <if test="status != null">status,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="materialCode != null">#{materialCode},</if>
+            <if test="materialName != null">#{materialName},</if>
+            <if test="spec != null">#{spec},</if>
+            <if test="unit != null">#{unit},</if>
+            <if test="category != null">#{category},</if>
+            <if test="productFlag != null">#{productFlag},</if>
+            <if test="safetyStock != null">#{safetyStock},</if>
+            <if test="maxStock != null">#{maxStock},</if>
+            <if test="price != null">#{price},</if>
+            <if test="status != null">#{status},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            sysdate(),
+        </trim>
+    </insert>
+
+    <update id="updateMesMaterial" parameterType="com.ruoyi.mes.domain.MesMaterial">
+        update mes_material
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="materialCode != null">material_code = #{materialCode},</if>
+            <if test="materialName != null">material_name = #{materialName},</if>
+            <if test="spec != null">spec = #{spec},</if>
+            <if test="unit != null">unit = #{unit},</if>
+            <if test="category != null">category = #{category},</if>
+            <if test="productFlag != null">product_flag = #{productFlag},</if>
+            <if test="safetyStock != null">safety_stock = #{safetyStock},</if>
+            <if test="maxStock != null">max_stock = #{maxStock},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+        </trim>
+        where material_id = #{materialId}
+    </update>
+
+    <delete id="deleteMesMaterialById" parameterType="Long">
+        delete from mes_material where material_id = #{materialId}
+    </delete>
+
+    <delete id="deleteMesMaterialByIds" parameterType="String">
+        delete from mes_material where material_id in
+        <foreach item="materialId" collection="array" open="(" separator="," close=")">
+            #{materialId}
+        </foreach>
+    </delete>
+</mapper>

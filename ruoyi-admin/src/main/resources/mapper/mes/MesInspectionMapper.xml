@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.mapper.MesInspectionMapper">
+
+    <resultMap type="com.ruoyi.mes.domain.MesInspection" id="MesInspectionResult">
+        <result property="inspectionId"    column="inspection_id"    />
+        <result property="inspectionCode"    column="inspection_code"    />
+        <result property="inspectionType"    column="inspection_type"    />
+        <result property="orderCode"    column="order_code"    />
+        <result property="productCode"    column="product_code"    />
+        <result property="batchNo"    column="batch_no"    />
+        <result property="sampleQty"    column="sample_qty"    />
+        <result property="ngQty"    column="ng_qty"    />
+        <result property="result"    column="result"    />
+        <result property="inspector"    column="inspector"    />
+        <result property="inspectTime"    column="inspect_time"    />
+        <result property="remark"    column="remark"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectMesInspectionVo">
+        select inspection_id,
+               inspection_code,
+               inspection_type,
+               order_code,
+               product_code,
+               batch_no,
+               sample_qty,
+               ng_qty,
+               result,
+               inspector,
+               inspect_time,
+               remark,
+               create_by,
+               create_time,
+               update_by,
+               update_time from mes_inspection
+    </sql>
+
+    <select id="selectMesInspectionList" parameterType="com.ruoyi.mes.domain.MesInspection" resultMap="MesInspectionResult">
+        <include refid="selectMesInspectionVo"/>
+        <where>
+            <if test="inspectionType != null and inspectionType != ''"> AND inspection_type = #{inspectionType}</if>
+            <if test="result != null and result != ''"> AND result = #{result}</if>
+            <if test="params.keyword != null and params.keyword != ''">
+                AND (1 = 0
+            <if test="params.keyword != null and params.keyword != ''"> OR inspection_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR order_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR batch_no like concat('%', #{params.keyword}, '%')</if>
+                )
+            </if>
+        </where>
+        order by inspection_id desc
+    </select>
+
+    <select id="selectMesInspectionById" parameterType="Long" resultMap="MesInspectionResult">
+        <include refid="selectMesInspectionVo"/>
+        where inspection_id = #{inspectionId}
+    </select>
+
+    <insert id="insertMesInspection" parameterType="com.ruoyi.mes.domain.MesInspection" useGeneratedKeys="true" keyProperty="inspectionId">
+        insert into mes_inspection
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="inspectionCode != null">inspection_code,</if>
+            <if test="inspectionType != null">inspection_type,</if>
+            <if test="orderCode != null">order_code,</if>
+            <if test="productCode != null">product_code,</if>
+            <if test="batchNo != null">batch_no,</if>
+            <if test="sampleQty != null">sample_qty,</if>
+            <if test="ngQty != null">ng_qty,</if>
+            <if test="result != null">result,</if>
+            <if test="inspector != null">inspector,</if>
+            <if test="inspectTime != null">inspect_time,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="inspectionCode != null">#{inspectionCode},</if>
+            <if test="inspectionType != null">#{inspectionType},</if>
+            <if test="orderCode != null">#{orderCode},</if>
+            <if test="productCode != null">#{productCode},</if>
+            <if test="batchNo != null">#{batchNo},</if>
+            <if test="sampleQty != null">#{sampleQty},</if>
+            <if test="ngQty != null">#{ngQty},</if>
+            <if test="result != null">#{result},</if>
+            <if test="inspector != null">#{inspector},</if>
+            <if test="inspectTime != null">#{inspectTime},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            sysdate(),
+        </trim>
+    </insert>
+
+    <update id="updateMesInspection" parameterType="com.ruoyi.mes.domain.MesInspection">
+        update mes_inspection
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="inspectionCode != null">inspection_code = #{inspectionCode},</if>
+            <if test="inspectionType != null">inspection_type = #{inspectionType},</if>
+            <if test="orderCode != null">order_code = #{orderCode},</if>
+            <if test="productCode != null">product_code = #{productCode},</if>
+            <if test="batchNo != null">batch_no = #{batchNo},</if>
+            <if test="sampleQty != null">sample_qty = #{sampleQty},</if>
+            <if test="ngQty != null">ng_qty = #{ngQty},</if>
+            <if test="result != null">result = #{result},</if>
+            <if test="inspector != null">inspector = #{inspector},</if>
+            <if test="inspectTime != null">inspect_time = #{inspectTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+        </trim>
+        where inspection_id = #{inspectionId}
+    </update>
+
+    <delete id="deleteMesInspectionById" parameterType="Long">
+        delete from mes_inspection where inspection_id = #{inspectionId}
+    </delete>
+
+    <delete id="deleteMesInspectionByIds" parameterType="String">
+        delete from mes_inspection where inspection_id in
+        <foreach item="inspectionId" collection="array" open="(" separator="," close=")">
+            #{inspectionId}
+        </foreach>
+    </delete>
+</mapper>

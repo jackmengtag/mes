@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.mapper.MesCollabMapper">
+
+    <resultMap type="com.ruoyi.mes.domain.MesCollab" id="MesCollabResult">
+        <result property="collabId"    column="collab_id"    />
+        <result property="collabCode"    column="collab_code"    />
+        <result property="collabType"    column="collab_type"    />
+        <result property="supplierCode"    column="supplier_code"    />
+        <result property="supplierName"    column="supplier_name"    />
+        <result property="materialCode"    column="material_code"    />
+        <result property="materialName"    column="material_name"    />
+        <result property="qty"    column="qty"    />
+        <result property="planDate"    column="plan_date"    />
+        <result property="actualDate"    column="actual_date"    />
+        <result property="status"    column="status"    />
+        <result property="content"    column="content"    />
+        <result property="handler"    column="handler"    />
+        <result property="remark"    column="remark"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectMesCollabVo">
+        select collab_id,
+               collab_code,
+               collab_type,
+               supplier_code,
+               supplier_name,
+               material_code,
+               material_name,
+               qty,
+               plan_date,
+               actual_date,
+               status,
+               content,
+               handler,
+               remark,
+               create_by,
+               create_time,
+               update_by,
+               update_time from mes_collab
+    </sql>
+
+    <select id="selectMesCollabList" parameterType="com.ruoyi.mes.domain.MesCollab" resultMap="MesCollabResult">
+        <include refid="selectMesCollabVo"/>
+        <where>
+            <if test="collabType != null and collabType != ''"> AND collab_type = #{collabType}</if>
+            <if test="status != null and status != ''"> AND status = #{status}</if>
+            <if test="params.keyword != null and params.keyword != ''">
+                AND (1 = 0
+            <if test="params.keyword != null and params.keyword != ''"> OR collab_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR supplier_name like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR material_name like concat('%', #{params.keyword}, '%')</if>
+                )
+            </if>
+        </where>
+        order by collab_id desc
+    </select>
+
+    <select id="selectMesCollabById" parameterType="Long" resultMap="MesCollabResult">
+        <include refid="selectMesCollabVo"/>
+        where collab_id = #{collabId}
+    </select>
+
+    <insert id="insertMesCollab" parameterType="com.ruoyi.mes.domain.MesCollab" useGeneratedKeys="true" keyProperty="collabId">
+        insert into mes_collab
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="collabCode != null">collab_code,</if>
+            <if test="collabType != null">collab_type,</if>
+            <if test="supplierCode != null">supplier_code,</if>
+            <if test="supplierName != null">supplier_name,</if>
+            <if test="materialCode != null">material_code,</if>
+            <if test="materialName != null">material_name,</if>
+            <if test="qty != null">qty,</if>
+            <if test="planDate != null">plan_date,</if>
+            <if test="actualDate != null">actual_date,</if>
+            <if test="status != null">status,</if>
+            <if test="content != null">content,</if>
+            <if test="handler != null">handler,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="collabCode != null">#{collabCode},</if>
+            <if test="collabType != null">#{collabType},</if>
+            <if test="supplierCode != null">#{supplierCode},</if>
+            <if test="supplierName != null">#{supplierName},</if>
+            <if test="materialCode != null">#{materialCode},</if>
+            <if test="materialName != null">#{materialName},</if>
+            <if test="qty != null">#{qty},</if>
+            <if test="planDate != null">#{planDate},</if>
+            <if test="actualDate != null">#{actualDate},</if>
+            <if test="status != null">#{status},</if>
+            <if test="content != null">#{content},</if>
+            <if test="handler != null">#{handler},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            sysdate(),
+        </trim>
+    </insert>
+
+    <update id="updateMesCollab" parameterType="com.ruoyi.mes.domain.MesCollab">
+        update mes_collab
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="collabCode != null">collab_code = #{collabCode},</if>
+            <if test="collabType != null">collab_type = #{collabType},</if>
+            <if test="supplierCode != null">supplier_code = #{supplierCode},</if>
+            <if test="supplierName != null">supplier_name = #{supplierName},</if>
+            <if test="materialCode != null">material_code = #{materialCode},</if>
+            <if test="materialName != null">material_name = #{materialName},</if>
+            <if test="qty != null">qty = #{qty},</if>
+            <if test="planDate != null">plan_date = #{planDate},</if>
+            <if test="actualDate != null">actual_date = #{actualDate},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="handler != null">handler = #{handler},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+        </trim>
+        where collab_id = #{collabId}
+    </update>
+
+    <delete id="deleteMesCollabById" parameterType="Long">
+        delete from mes_collab where collab_id = #{collabId}
+    </delete>
+
+    <delete id="deleteMesCollabByIds" parameterType="String">
+        delete from mes_collab where collab_id in
+        <foreach item="collabId" collection="array" open="(" separator="," close=")">
+            #{collabId}
+        </foreach>
+    </delete>
+</mapper>

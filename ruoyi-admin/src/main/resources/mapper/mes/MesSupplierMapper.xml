@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.mapper.MesSupplierMapper">
+
+    <resultMap type="com.ruoyi.mes.domain.MesSupplier" id="MesSupplierResult">
+        <result property="supplierId"    column="supplier_id"    />
+        <result property="supplierCode"    column="supplier_code"    />
+        <result property="supplierName"    column="supplier_name"    />
+        <result property="category"    column="category"    />
+        <result property="level"    column="level"    />
+        <result property="contact"    column="contact"    />
+        <result property="phone"    column="phone"    />
+        <result property="address"    column="address"    />
+        <result property="score"    column="score"    />
+        <result property="onTimeRate"    column="on_time_rate"    />
+        <result property="status"    column="status"    />
+        <result property="auditTime"    column="audit_time"    />
+        <result property="remark"    column="remark"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectMesSupplierVo">
+        select supplier_id,
+               supplier_code,
+               supplier_name,
+               category,
+               level,
+               contact,
+               phone,
+               address,
+               score,
+               on_time_rate,
+               status,
+               audit_time,
+               remark,
+               create_by,
+               create_time,
+               update_by,
+               update_time from mes_supplier
+    </sql>
+
+    <select id="selectMesSupplierList" parameterType="com.ruoyi.mes.domain.MesSupplier" resultMap="MesSupplierResult">
+        <include refid="selectMesSupplierVo"/>
+        <where>
+            <if test="status != null and status != ''"> AND status = #{status}</if>
+            <if test="category != null and category != ''"> AND category = #{category}</if>
+            <if test="level != null and level != ''"> AND level = #{level}</if>
+            <if test="params.keyword != null and params.keyword != ''">
+                AND (1 = 0
+            <if test="params.keyword != null and params.keyword != ''"> OR supplier_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR supplier_name like concat('%', #{params.keyword}, '%')</if>
+                )
+            </if>
+        </where>
+        order by supplier_id desc
+    </select>
+
+    <select id="selectMesSupplierById" parameterType="Long" resultMap="MesSupplierResult">
+        <include refid="selectMesSupplierVo"/>
+        where supplier_id = #{supplierId}
+    </select>
+
+    <insert id="insertMesSupplier" parameterType="com.ruoyi.mes.domain.MesSupplier" useGeneratedKeys="true" keyProperty="supplierId">
+        insert into mes_supplier
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="supplierCode != null">supplier_code,</if>
+            <if test="supplierName != null">supplier_name,</if>
+            <if test="category != null">category,</if>
+            <if test="level != null">level,</if>
+            <if test="contact != null">contact,</if>
+            <if test="phone != null">phone,</if>
+            <if test="address != null">address,</if>
+            <if test="score != null">score,</if>
+            <if test="onTimeRate != null">on_time_rate,</if>
+            <if test="status != null">status,</if>
+            <if test="auditTime != null">audit_time,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="supplierCode != null">#{supplierCode},</if>
+            <if test="supplierName != null">#{supplierName},</if>
+            <if test="category != null">#{category},</if>
+            <if test="level != null">#{level},</if>
+            <if test="contact != null">#{contact},</if>
+            <if test="phone != null">#{phone},</if>
+            <if test="address != null">#{address},</if>
+            <if test="score != null">#{score},</if>
+            <if test="onTimeRate != null">#{onTimeRate},</if>
+            <if test="status != null">#{status},</if>
+            <if test="auditTime != null">#{auditTime},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            sysdate(),
+        </trim>
+    </insert>
+
+    <update id="updateMesSupplier" parameterType="com.ruoyi.mes.domain.MesSupplier">
+        update mes_supplier
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="supplierCode != null">supplier_code = #{supplierCode},</if>
+            <if test="supplierName != null">supplier_name = #{supplierName},</if>
+            <if test="category != null">category = #{category},</if>
+            <if test="level != null">level = #{level},</if>
+            <if test="contact != null">contact = #{contact},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="score != null">score = #{score},</if>
+            <if test="onTimeRate != null">on_time_rate = #{onTimeRate},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="auditTime != null">audit_time = #{auditTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+        </trim>
+        where supplier_id = #{supplierId}
+    </update>
+
+    <delete id="deleteMesSupplierById" parameterType="Long">
+        delete from mes_supplier where supplier_id = #{supplierId}
+    </delete>
+
+    <delete id="deleteMesSupplierByIds" parameterType="String">
+        delete from mes_supplier where supplier_id in
+        <foreach item="supplierId" collection="array" open="(" separator="," close=")">
+            #{supplierId}
+        </foreach>
+    </delete>
+</mapper>

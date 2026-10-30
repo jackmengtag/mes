@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.mapper.MesReportMapper">
+
+    <resultMap type="com.ruoyi.mes.domain.MesReport" id="MesReportResult">
+        <result property="reportId"    column="report_id"    />
+        <result property="reportCode"    column="report_code"    />
+        <result property="orderCode"    column="order_code"    />
+        <result property="station"    column="station"    />
+        <result property="operator"    column="operator"    />
+        <result property="qtyOk"    column="qty_ok"    />
+        <result property="qtyNg"    column="qty_ng"    />
+        <result property="shift"    column="shift"    />
+        <result property="reportTime"    column="report_time"    />
+        <result property="remark"    column="remark"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectMesReportVo">
+        select report_id,
+               report_code,
+               order_code,
+               station,
+               operator,
+               qty_ok,
+               qty_ng,
+               shift,
+               report_time,
+               remark,
+               create_by,
+               create_time,
+               update_by,
+               update_time from mes_report
+    </sql>
+
+    <select id="selectMesReportList" parameterType="com.ruoyi.mes.domain.MesReport" resultMap="MesReportResult">
+        <include refid="selectMesReportVo"/>
+        <where>
+            <if test="shift != null and shift != ''"> AND shift = #{shift}</if>
+            <if test="params.keyword != null and params.keyword != ''">
+                AND (1 = 0
+            <if test="params.keyword != null and params.keyword != ''"> OR report_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR order_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR operator like concat('%', #{params.keyword}, '%')</if>
+                )
+            </if>
+        </where>
+        order by report_id desc
+    </select>
+
+    <select id="selectMesReportById" parameterType="Long" resultMap="MesReportResult">
+        <include refid="selectMesReportVo"/>
+        where report_id = #{reportId}
+    </select>
+
+    <insert id="insertMesReport" parameterType="com.ruoyi.mes.domain.MesReport" useGeneratedKeys="true" keyProperty="reportId">
+        insert into mes_report
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="reportCode != null">report_code,</if>
+            <if test="orderCode != null">order_code,</if>
+            <if test="station != null">station,</if>
+            <if test="operator != null">operator,</if>
+            <if test="qtyOk != null">qty_ok,</if>
+            <if test="qtyNg != null">qty_ng,</if>
+            <if test="shift != null">shift,</if>
+            <if test="reportTime != null">report_time,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="reportCode != null">#{reportCode},</if>
+            <if test="orderCode != null">#{orderCode},</if>
+            <if test="station != null">#{station},</if>
+            <if test="operator != null">#{operator},</if>
+            <if test="qtyOk != null">#{qtyOk},</if>
+            <if test="qtyNg != null">#{qtyNg},</if>
+            <if test="shift != null">#{shift},</if>
+            <if test="reportTime != null">#{reportTime},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            sysdate(),
+        </trim>
+    </insert>
+
+    <update id="updateMesReport" parameterType="com.ruoyi.mes.domain.MesReport">
+        update mes_report
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="reportCode != null">report_code = #{reportCode},</if>
+            <if test="orderCode != null">order_code = #{orderCode},</if>
+            <if test="station != null">station = #{station},</if>
+            <if test="operator != null">operator = #{operator},</if>
+            <if test="qtyOk != null">qty_ok = #{qtyOk},</if>
+            <if test="qtyNg != null">qty_ng = #{qtyNg},</if>
+            <if test="shift != null">shift = #{shift},</if>
+            <if test="reportTime != null">report_time = #{reportTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+        </trim>
+        where report_id = #{reportId}
+    </update>
+
+    <delete id="deleteMesReportById" parameterType="Long">
+        delete from mes_report where report_id = #{reportId}
+    </delete>
+
+    <delete id="deleteMesReportByIds" parameterType="String">
+        delete from mes_report where report_id in
+        <foreach item="reportId" collection="array" open="(" separator="," close=")">
+            #{reportId}
+        </foreach>
+    </delete>
+</mapper>

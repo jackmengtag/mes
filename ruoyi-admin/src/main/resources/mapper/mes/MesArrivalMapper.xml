@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.mapper.MesArrivalMapper">
+
+    <resultMap type="com.ruoyi.mes.domain.MesArrival" id="MesArrivalResult">
+        <result property="arrivalId"    column="arrival_id"    />
+        <result property="arrivalCode"    column="arrival_code"    />
+        <result property="orderCode"    column="order_code"    />
+        <result property="supplierName"    column="supplier_name"    />
+        <result property="materialCode"    column="material_code"    />
+        <result property="materialName"    column="material_name"    />
+        <result property="qty"    column="qty"    />
+        <result property="qualifiedQty"    column="qualified_qty"    />
+        <result property="rejectedQty"    column="rejected_qty"    />
+        <result property="warehouseCode"    column="warehouse_code"    />
+        <result property="arrivalDate"    column="arrival_date"    />
+        <result property="status"    column="status"    />
+        <result property="remark"    column="remark"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectMesArrivalVo">
+        select arrival_id,
+               arrival_code,
+               order_code,
+               supplier_name,
+               material_code,
+               material_name,
+               qty,
+               qualified_qty,
+               rejected_qty,
+               warehouse_code,
+               arrival_date,
+               status,
+               remark,
+               create_by,
+               create_time,
+               update_by,
+               update_time from mes_arrival
+    </sql>
+
+    <select id="selectMesArrivalList" parameterType="com.ruoyi.mes.domain.MesArrival" resultMap="MesArrivalResult">
+        <include refid="selectMesArrivalVo"/>
+        <where>
+            <if test="status != null and status != ''"> AND status = #{status}</if>
+            <if test="warehouseCode != null and warehouseCode != ''"> AND warehouse_code = #{warehouseCode}</if>
+            <if test="params.keyword != null and params.keyword != ''">
+                AND (1 = 0
+            <if test="params.keyword != null and params.keyword != ''"> OR arrival_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR order_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR material_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR material_name like concat('%', #{params.keyword}, '%')</if>
+                )
+            </if>
+        </where>
+        order by arrival_id desc
+    </select>
+
+    <select id="selectMesArrivalById" parameterType="Long" resultMap="MesArrivalResult">
+        <include refid="selectMesArrivalVo"/>
+        where arrival_id = #{arrivalId}
+    </select>
+
+    <insert id="insertMesArrival" parameterType="com.ruoyi.mes.domain.MesArrival" useGeneratedKeys="true" keyProperty="arrivalId">
+        insert into mes_arrival
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="arrivalCode != null">arrival_code,</if>
+            <if test="orderCode != null">order_code,</if>
+            <if test="supplierName != null">supplier_name,</if>
+            <if test="materialCode != null">material_code,</if>
+            <if test="materialName != null">material_name,</if>
+            <if test="qty != null">qty,</if>
+            <if test="qualifiedQty != null">qualified_qty,</if>
+            <if test="rejectedQty != null">rejected_qty,</if>
+            <if test="warehouseCode != null">warehouse_code,</if>
+            <if test="arrivalDate != null">arrival_date,</if>
+            <if test="status != null">status,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="arrivalCode != null">#{arrivalCode},</if>
+            <if test="orderCode != null">#{orderCode},</if>
+            <if test="supplierName != null">#{supplierName},</if>
+            <if test="materialCode != null">#{materialCode},</if>
+            <if test="materialName != null">#{materialName},</if>
+            <if test="qty != null">#{qty},</if>
+            <if test="qualifiedQty != null">#{qualifiedQty},</if>
+            <if test="rejectedQty != null">#{rejectedQty},</if>
+            <if test="warehouseCode != null">#{warehouseCode},</if>
+            <if test="arrivalDate != null">#{arrivalDate},</if>
+            <if test="status != null">#{status},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            sysdate(),
+        </trim>
+    </insert>
+
+    <update id="updateMesArrival" parameterType="com.ruoyi.mes.domain.MesArrival">
+        update mes_arrival
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="arrivalCode != null">arrival_code = #{arrivalCode},</if>
+            <if test="orderCode != null">order_code = #{orderCode},</if>
+            <if test="supplierName != null">supplier_name = #{supplierName},</if>
+            <if test="materialCode != null">material_code = #{materialCode},</if>
+            <if test="materialName != null">material_name = #{materialName},</if>
+            <if test="qty != null">qty = #{qty},</if>
+            <if test="qualifiedQty != null">qualified_qty = #{qualifiedQty},</if>
+            <if test="rejectedQty != null">rejected_qty = #{rejectedQty},</if>
+            <if test="warehouseCode != null">warehouse_code = #{warehouseCode},</if>
+            <if test="arrivalDate != null">arrival_date = #{arrivalDate},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+        </trim>
+        where arrival_id = #{arrivalId}
+    </update>
+
+    <delete id="deleteMesArrivalById" parameterType="Long">
+        delete from mes_arrival where arrival_id = #{arrivalId}
+    </delete>
+
+    <delete id="deleteMesArrivalByIds" parameterType="String">
+        delete from mes_arrival where arrival_id in
+        <foreach item="arrivalId" collection="array" open="(" separator="," close=")">
+            #{arrivalId}
+        </foreach>
+    </delete>
+</mapper>

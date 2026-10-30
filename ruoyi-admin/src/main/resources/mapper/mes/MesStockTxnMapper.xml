@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.mes.mapper.MesStockTxnMapper">
+
+    <resultMap type="com.ruoyi.mes.domain.MesStockTxn" id="MesStockTxnResult">
+        <result property="txnId"    column="txn_id"    />
+        <result property="txnCode"    column="txn_code"    />
+        <result property="txnType"    column="txn_type"    />
+        <result property="sourceType"    column="source_type"    />
+        <result property="sourceCode"    column="source_code"    />
+        <result property="materialCode"    column="material_code"    />
+        <result property="materialName"    column="material_name"    />
+        <result property="warehouseCode"    column="warehouse_code"    />
+        <result property="batchNo"    column="batch_no"    />
+        <result property="qty"    column="qty"    />
+        <result property="unit"    column="unit"    />
+        <result property="price"    column="price"    />
+        <result property="amount"    column="amount"    />
+        <result property="txnTime"    column="txn_time"    />
+        <result property="operator"    column="operator"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectMesStockTxnVo">
+        select txn_id,
+               txn_code,
+               txn_type,
+               source_type,
+               source_code,
+               material_code,
+               material_name,
+               warehouse_code,
+               batch_no,
+               qty,
+               unit,
+               price,
+               amount,
+               txn_time,
+               operator,
+               remark from mes_stock_txn
+    </sql>
+
+    <select id="selectMesStockTxnList" parameterType="com.ruoyi.mes.domain.MesStockTxn" resultMap="MesStockTxnResult">
+        <include refid="selectMesStockTxnVo"/>
+        <where>
+            <if test="txnType != null and txnType != ''"> AND txn_type = #{txnType}</if>
+            <if test="sourceType != null and sourceType != ''"> AND source_type = #{sourceType}</if>
+            <if test="warehouseCode != null and warehouseCode != ''"> AND warehouse_code = #{warehouseCode}</if>
+            <if test="params.keyword != null and params.keyword != ''">
+                AND (1 = 0
+            <if test="params.keyword != null and params.keyword != ''"> OR txn_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR source_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR material_code like concat('%', #{params.keyword}, '%')</if>
+            <if test="params.keyword != null and params.keyword != ''"> OR material_name like concat('%', #{params.keyword}, '%')</if>
+                )
+            </if>
+        </where>
+        order by txn_id desc
+    </select>
+
+    <select id="selectMesStockTxnById" parameterType="Long" resultMap="MesStockTxnResult">
+        <include refid="selectMesStockTxnVo"/>
+        where txn_id = #{txnId}
+    </select>
+
+    <insert id="insertMesStockTxn" parameterType="com.ruoyi.mes.domain.MesStockTxn" useGeneratedKeys="true" keyProperty="txnId">
+        insert into mes_stock_txn
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="txnCode != null">txn_code,</if>
+            <if test="txnType != null">txn_type,</if>
+            <if test="sourceType != null">source_type,</if>
+            <if test="sourceCode != null">source_code,</if>
+            <if test="materialCode != null">material_code,</if>
+            <if test="materialName != null">material_name,</if>
+            <if test="warehouseCode != null">warehouse_code,</if>
+            <if test="batchNo != null">batch_no,</if>
+            <if test="qty != null">qty,</if>
+            <if test="unit != null">unit,</if>
+            <if test="price != null">price,</if>
+            <if test="amount != null">amount,</if>
+            <if test="txnTime != null">txn_time,</if>
+            <if test="operator != null">operator,</if>
+            <if test="remark != null">remark,</if>
+            
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="txnCode != null">#{txnCode},</if>
+            <if test="txnType != null">#{txnType},</if>
+            <if test="sourceType != null">#{sourceType},</if>
+            <if test="sourceCode != null">#{sourceCode},</if>
+            <if test="materialCode != null">#{materialCode},</if>
+            <if test="materialName != null">#{materialName},</if>
+            <if test="warehouseCode != null">#{warehouseCode},</if>
+            <if test="batchNo != null">#{batchNo},</if>
+            <if test="qty != null">#{qty},</if>
+            <if test="unit != null">#{unit},</if>
+            <if test="price != null">#{price},</if>
+            <if test="amount != null">#{amount},</if>
+            <if test="txnTime != null">#{txnTime},</if>
+            <if test="operator != null">#{operator},</if>
+            <if test="remark != null">#{remark},</if>
+            
+        </trim>
+    </insert>
+
+    <update id="updateMesStockTxn" parameterType="com.ruoyi.mes.domain.MesStockTxn">
+        update mes_stock_txn
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="txnCode != null">txn_code = #{txnCode},</if>
+            <if test="txnType != null">txn_type = #{txnType},</if>
+            <if test="sourceType != null">source_type = #{sourceType},</if>
+            <if test="sourceCode != null">source_code = #{sourceCode},</if>
+            <if test="materialCode != null">material_code = #{materialCode},</if>
+            <if test="materialName != null">material_name = #{materialName},</if>
+            <if test="warehouseCode != null">warehouse_code = #{warehouseCode},</if>
+            <if test="batchNo != null">batch_no = #{batchNo},</if>
+            <if test="qty != null">qty = #{qty},</if>
+            <if test="unit != null">unit = #{unit},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="txnTime != null">txn_time = #{txnTime},</if>
+            <if test="operator != null">operator = #{operator},</if>
+
+            
+        </trim>
+        where txn_id = #{txnId}
+    </update>
+
+    <delete id="deleteMesStockTxnById" parameterType="Long">
+        delete from mes_stock_txn where txn_id = #{txnId}
+    </delete>
+
+    <delete id="deleteMesStockTxnByIds" parameterType="String">
+        delete from mes_stock_txn where txn_id in
+        <foreach item="txnId" collection="array" open="(" separator="," close=")">
+            #{txnId}
+        </foreach>
+    </delete>
+</mapper>
