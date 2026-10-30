@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>销售管理 · 制造与供应链协同平台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="sales">
+
+<aside class="app-nav" id="appNav"></aside>
+<div class="app-body">
+  <header class="app-topbar" id="appTopbar"></header>
+  <main class="app-content">
+    <div class="page-head">
+      <div>
+        <div class="page-title">销售管理</div>
+        <div class="page-sub">销售订单 · 销售出库 · 销售发票 · 销售收入 · 客户档案</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="page-actions">
+        <button class="btn ghost" id="btnExport"></button>
+        <button class="btn" id="btnInvoice"></button>
+        <button class="btn primary" id="btnNewSo"></button>
+      </div>
+    </div>
+
+    <div id="kpiGrid" class="grid-4 stagger mb-16"></div>
+
+    <section class="card mb-16">
+      <div class="card-head">
+        <div class="card-title" id="ledgerTitle"></div>
+        <span class="card-sub">订单 / 出库 / 发票 / 收入 / 客户</span>
+        <div class="spacer"></div>
+        <span class="tag outline">2026-10</span>
+      </div>
+      <div class="tabs" data-tabs style="padding:0 14px">
+        <button type="button" class="tab active" data-tab="orders">销售订单</button>
+        <button type="button" class="tab" data-tab="outbounds">销售出库</button>
+        <button type="button" class="tab" data-tab="invoices">销售发票</button>
+        <button type="button" class="tab" data-tab="revenues">销售收入</button>
+        <button type="button" class="tab" data-tab="customers">客户档案</button>
+      </div>
+      <div class="card-body tight">
+        <div class="tab-panel" data-panel="orders" style="padding-top:0">
+          <div id="soTable"></div>
+        </div>
+        <div class="tab-panel hidden" data-panel="outbounds" style="padding-top:0">
+          <div id="outTable"></div>
+        </div>
+        <div class="tab-panel hidden" data-panel="invoices" style="padding-top:0">
+          <div id="sinvTable"></div>
+        </div>
+        <div class="tab-panel hidden" data-panel="revenues" style="padding-top:0">
+          <div id="revTable"></div>
+        </div>
+        <div class="tab-panel hidden" data-panel="customers" style="padding-top:0">
+          <div id="cusTable"></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid-2">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="salesTrendTitle"></div>
+          <span class="card-sub">单位：万元</span>
+          <div class="spacer"></div>
+          <span class="tag accent">10 月</span>
+        </div>
+        <div class="card-body">
+          <div id="salesBars"></div>
+          <div class="divider"></div>
+          <div class="hint" id="salesTrendNote"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="creditTitle"></div>
+          <div class="spacer"></div>
+          <span class="tag info">授信总额 2,080 万</span>
+        </div>
+        <div class="card-body tight" id="creditTable"></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="assets/mock.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var M = MESUI;
+  var S = DB.sales;
+
+  document.getElementById('btnExport').innerHTML = M.icon('download') + '导出销售订单';
+  document.getElementById('btnInvoice').innerHTML = M.icon('fileText') + '开票确认';
+  document.getElementById('btnNewSo').innerHTML = M.icon('plus') + '新建销售订单';
+  document.getElementById('ledgerTitle').innerHTML = M.icon('truck') + '销售业务台账';
+  document.getElementById('salesTrendTitle').innerHTML = M.icon('trend') + '销售趋势';
+  document.getElementById('creditTitle').innerHTML = M.icon('users') + '客户信用';
+
+  M.kpi('#kpiGrid', S.kpis);
+
+  function stTone(s) {
+    if (/已审核|已入库|已到货|已结算|已开票|已确认|已出库|已签收|已收款|已发货|合作中|已退货|已退款/.test(s)) return 'ok';
+    if (/交付逾期|驳回|停用|暂停|已作废|不合格|拒收/.test(s)) return 'danger';
+    if (/待|部分|暂估|考察|未到货|处理中|生产中/.test(s)) return 'warn';
+    return 'mute';
+  }
+
+  /* ---------- 销售订单 ---------- */
+  var soCols = [
+    { key: 'no', label: '订单号', cls: 'mono' },
+    { key: 'customer', label: '客户' },
+    { key: 'product', label: '产品' },
+    { key: 'qty', label: '数量', cls: 'num' },
+    { key: 'amount', label: '金额(万元)', cls: 'num', formatter: function (r) { return Number(r.amount).toFixed(1); } },
+    { key: 'orderDate', label: '下单日期', cls: 'mono' },
+    { key: 'deliveryDate', label: '交期', cls: 'mono' },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status, stTone(r.status)); } }
+  ];
+  var soRows = S.orders;
+  function renderSo() {
+    M.table({
+      mount: '#soTable',
+      columns: soCols,
+      rows: soRows,
+      pageSize: 8,
+      exportName: '销售订单',
+      rowClass: function (r) { return r.status === '待发货' ? 'row-warn' : ''; },
+      onRowClick: openSo
+    });
+  }
+  renderSo();
+
+  /* ---------- 销售出库 ---------- */
+  var outTable = M.table({
+    mount: '#outTable',
+    columns: [
+      { key: 'no', label: '出库单号', cls: 'mono' },
+      { key: 'order', label: '销售订单', cls: 'mono' },
+      { key: 'customer', label: '客户' },
+      { key: 'product', label: '产品' },
+      { key: 'qty', label: '数量', cls: 'num' },
+      { key: 'warehouse', label: '仓库' },
+      { key: 'date', label: '日期', cls: 'mono' },
+      { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status, stTone(r.status)); } }
+    ],
+    rows: S.outbounds,
+    pageSize: 6,
+    search: false,
+    exportName: '销售出库',
+    onRowClick: openOutboundDetail
+  });
+
+  /* ---------- 销售发票 ---------- */
+  function renderInv() {
+    M.table({
+      mount: '#sinvTable',
+      columns: [
+        { key: 'no', label: '发票号', cls: 'mono' },
+        { key: 'order', label: '销售订单', cls: 'mono' },
+        { key: 'customer', label: '客户' },
+        { key: 'amount', label: '金额(万元)', cls: 'num', formatter: function (r) { return Number(r.amount).toFixed(1); } },
+        { key: 'tax', label: '税额(万元)', cls: 'num', formatter: function (r) { return Number(r.tax).toFixed(2); } },
+        { key: 'type', label: '类型', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.type) + '</span>'; } },
+        { key: 'date', label: '日期', cls: 'mono' },
+        { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status, stTone(r.status)); } }
+      ],
+      rows: S.invoices,
+      pageSize: 6,
+      search: false,
+      exportName: '销售发票',
+      rowClass: function (r) { return r.status === '待开票' ? 'row-warn' : ''; },
+      onRowClick: openInvoiceDetail
+    });
+  }
+  renderInv();
+
+  /* ---------- 销售收入 ---------- */
+  M.table({
+    mount: '#revTable',
+    columns: [
+      { key: 'no', label: '确认单号', cls: 'mono' },
+      { key: 'customer', label: '客户' },
+      { key: 'order', label: '销售订单', cls: 'mono' },
+      { key: 'amount', label: '金额(万元)', cls: 'num', formatter: function (r) { return Number(r.amount).toFixed(1); } },
+      { key: 'period', label: '期间', cls: 'mono' },
+      { key: 'confirmDate', label: '确认日期', cls: 'mono' },
+      { key: 'type', label: '确认方式' },
+      { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status, stTone(r.status)); } }
+    ],
+    rows: S.revenues,
+    pageSize: 6,
+    search: false,
+    exportName: '销售收入',
+    onRowClick: openRevenueDetail
+  });
+
+  /* ---------- 客户档案 ---------- */
+  M.table({
+    mount: '#cusTable',
+    columns: [
+      { key: 'code', label: '客户编码', cls: 'mono' },
+      { key: 'name', label: '名称' },
+      { key: 'level', label: '等级', formatter: function (r) {
+        return M.tag(r.level, r.level === 'A' ? 'ok' : r.level === 'B' ? 'info' : 'danger');
+      } },
+      { key: 'contact', label: '联系人' },
+      { key: 'phone', label: '电话', cls: 'mono' },
+      { key: 'credit', label: '信用额度', cls: 'num' },
+      { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status, stTone(r.status)); } }
+    ],
+    rows: S.customers,
+    pageSize: 6,
+    search: false,
+    exportName: '客户档案',
+    onRowClick: openCustomer
+  });
+
+  /* ---------- 销售趋势 ---------- */
+  M.vbars('#salesBars', DB.scm.monthly.map(function (x) { return { h: x.h, v: x.sales }; }), { unit: ' 万' });
+  var lastMonth = DB.scm.monthly[DB.scm.monthly.length - 1];
+  document.getElementById('salesTrendNote').textContent =
+    '10 月销售额 ' + M.num(lastMonth.sales) + ' 万元，环比 +9.2%';
+
+  /* ---------- 客户信用 ---------- */
+  M.table({
+    mount: '#creditTable',
+    columns: [
+      { key: 'name', label: '客户名称' },
+      { key: 'level', label: '等级', formatter: function (r) {
+        return M.tag(r.level + ' 级', r.level === 'A' ? 'ok' : r.level === 'B' ? 'info' : 'danger');
+      } },
+      { key: 'contact', label: '联系人' },
+      { key: 'credit', label: '信用额度', cls: 'num' },
+      { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status, stTone(r.status)); } }
+    ],
+    rows: S.customers,
+    pageSize: 6,
+    search: false,
+    exportName: '客户信用'
+  });
+
+  /* ---------- 页头操作 ---------- */
+  document.getElementById('btnNewSo').addEventListener('click', function () { openNewSo(); });
+  document.getElementById('btnInvoice').addEventListener('click', function () { openInvoiceConfirm(); });
+  document.getElementById('btnExport').addEventListener('click', function () {
+    M.exportCsv('销售订单', soCols, soRows);
+  });
+
+  M.bindTabs(document);
+
+  /* ---------- 抽屉 ---------- */
+  function openDoc(opts) {
+    M.drawer({
+      title: opts.title,
+      sub: opts.sub,
+      body: '<div id="docDl" class="mb-16"></div>' +
+        '<div class="divider"></div>' +
+        '<div class="hint mb-8">' + M.esc(opts.flowLabel || '单据流转') + '</div>' +
+        '<div id="docFlow"></div>' +
+        (opts.note ? '<div class="note warn mt-12">' + opts.note + '</div>' : ''),
+      footer: opts.footer || '<button class="btn" data-close>关闭</button><div class="spacer"></div><button class="btn primary" data-close>完成</button>',
+      onMount: function (card, close) {
+        M.dl(card.querySelector('#docDl'), opts.pairs);
+        M.opFlow(card.querySelector('#docFlow'), opts.steps || []);
+        if (opts.onMount) opts.onMount(card, close);
+      }
+    });
+  }
+
+  function orderSteps(r) {
+    var map = {
+      '生产中': ['done', 'active', 'todo', 'todo', 'todo'],
+      '待发货': ['done', 'done', 'active', 'todo', 'todo'],
+      '已发货': ['done', 'done', 'done', 'active', 'todo'],
+      '已开票': ['done', 'done', 'done', 'done', 'active'],
+      '已收款': ['done', 'done', 'done', 'done', 'done']
+    };
+    var s = map[r.status] || ['done', 'todo', 'todo', 'todo', 'todo'];
+    return [
+      { no: 1, name: '订单确认', meta: r.orderDate, state: s[0] },
+      { no: 2, name: '生产备货', meta: r.status === '生产中' ? '生产中' : '已完成', state: s[1] },
+      { no: 3, name: '销售出库', meta: r.status === '待发货' ? '待发货' : '已出库', state: s[2] },
+      { no: 4, name: '销售开票', meta: (r.status === '已开票' || r.status === '已收款') ? '已开票' : '待开票', state: s[3] },
+      { no: 5, name: '收入确认', meta: r.status === '已收款' ? '已收款' : '待确认', state: s[4] }
+    ];
+  }
+
+  function openSo(r) {
+    var cus = S.customers.filter(function (c) { return c.name === r.customer; })[0];
+    openDoc({
+      title: r.no,
+      sub: r.customer + ' · ' + r.product + ' · 交期 ' + r.deliveryDate,
+      flowLabel: '订单履约流转',
+      pairs: [
+        ['销售订单', r.no], ['客户', r.customer], ['产品', r.product],
+        ['销售数量', r.qty + ' 台'], ['订单金额', Number(r.amount).toFixed(1) + ' 万元'],
+        ['下单日期', r.orderDate], ['交货日期', r.deliveryDate],
+        ['订单状态', M.tag(r.status, stTone(r.status)), 'html'],
+        ['客户等级 / 信用', cus ? cus.level + ' 级 / ' + cus.credit : '—']
+      ],
+      steps: orderSteps(r),
+      footer: '<button class="btn" data-close>关闭</button><div class="spacer"></div>' +
+        '<a class="btn ghost" href="inventory.html?tab=stock&q=' + encodeURIComponent(r.product) + '">库存台账</a>' +
+        '<a class="btn ghost" href="production.html?q=' + encodeURIComponent(r.product) + '&mount=%23woTable">生产进度</a>' +
+        '<button class="btn" id="docOutbound">出库登记</button><button class="btn primary" data-close>完成</button>',
+      onMount: function (card, close) {
+        card.querySelector('#docOutbound').addEventListener('click', function () { close(); openOutbound(r.no); });
+      }
+    });
+  }
+
+  function openOutboundDetail(r) {
+    var signed = r.status === '已签收';
+    openDoc({
+      title: r.no,
+      sub: r.customer + ' · ' + r.product,
+      flowLabel: '销售出库流转',
+      pairs: [
+        ['出库单号', r.no], ['销售订单', r.order], ['客户', r.customer],
+        ['产品', r.product], ['出库数量', r.qty + ' 台'], ['发货仓库', r.warehouse],
+        ['出库日期', r.date], ['状态', M.tag(r.status, stTone(r.status)), 'html']
+      ],
+      steps: [
+        { no: 1, name: '出库通知', meta: r.date, state: 'done' },
+        { no: 2, name: '仓库拣货', meta: '已完成', state: 'done' },
+        { no: 3, name: '复核出库', meta: '已出库', state: 'done' },
+        { no: 4, name: '客户签收', meta: signed ? '已签收' : '运输中', state: signed ? 'done' : 'active' },
+        { no: 5, name: '销售开票', meta: '待开票', state: 'todo' }
+      ]
+    });
+  }
+
+  function openInvoiceDetail(r) {
+    var opened = r.status === '已开票';
+    openDoc({
+      title: r.no,
+      sub: r.customer + ' · ' + r.order,
+      flowLabel: '销售发票流转',
+      pairs: [
+        ['发票号', r.no], ['销售订单', r.order], ['客户', r.customer],
+        ['开票金额', Number(r.amount).toFixed(1) + ' 万元'], ['税额', Number(r.tax).toFixed(2) + ' 万元'],
+        ['发票类型', r.type], ['开票日期', r.date],
+        ['状态', M.tag(r.status, stTone(r.status)), 'html']
+      ],
+      steps: [
+        { no: 1, name: '发票登记', meta: r.date, state: 'done' },
+        { no: 2, name: '开票确认', meta: opened ? '已开票' : '待确认', state: opened ? 'done' : 'active' },
+        { no: 3, name: '应收挂账', meta: opened ? '已生成应收单' : '待生成', state: opened ? 'done' : 'todo' },
+        { no: 4, name: '收款核销', meta: '待收款', state: 'todo' }
+      ]
+    });
+  }
+
+  function openRevenueDetail(r) {
+    var confirmed = r.status === '已确认';
+    openDoc({
+      title: r.no,
+      sub: r.customer + ' · ' + r.order,
+      flowLabel: '收入确认流转',
+      pairs: [
+        ['确认单号', r.no], ['客户', r.customer], ['销售订单', r.order],
+        ['确认金额', Number(r.amount).toFixed(1) + ' 万元'], ['会计期间', r.period],
+        ['确认日期', r.confirmDate], ['确认方式', r.type],
+        ['状态', M.tag(r.status, stTone(r.status)), 'html']
+      ],
+      steps: [
+        { no: 1, name: '出库确认', meta: '已完成', state: 'done' },
+        { no: 2, name: '开票匹配', meta: r.type, state: 'done' },
+        { no: 3, name: '收入确认', meta: confirmed ? '已确认' : '待确认', state: confirmed ? 'done' : 'active' },
+        { no: 4, name: 'U8C 应收', meta: confirmed ? '已同步' : '待推送', state: confirmed ? 'done' : 'todo' }
+      ],
+      note: confirmed ? '' : '该笔收入尚未确认，请核对出库单与发票信息后完成收入确认，并推送 U8C 应收单。'
+    });
+  }
+
+  function openCustomer(c) {
+    var paused = c.status === '暂停';
+    openDoc({
+      title: c.name,
+      sub: c.code + ' · ' + c.level + ' 级客户 · 信用额度 ' + c.credit,
+      flowLabel: '客户生命周期',
+      pairs: [
+        ['客户编码', c.code], ['客户名称', c.name], ['客户等级', c.level],
+        ['联系人', c.contact], ['联系电话', c.phone], ['信用额度', c.credit],
+        ['合作状态', M.tag(c.status, stTone(c.status)), 'html']
+      ],
+      steps: [
+        { no: 1, name: '客户准入', meta: '已完成', state: 'done' },
+        { no: 2, name: '信用评估', meta: c.credit, state: 'done' },
+        { no: 3, name: '合作履约', meta: paused ? '暂停' : '合作中', state: paused ? 'active' : 'done' },
+        { no: 4, name: '年度复审', meta: '2026-12', state: 'todo' }
+      ]
+    });
+  }
+
+  /* ---------- 新建销售订单 ---------- */
+  function openNewSo() {
+    var cusOpts = S.customers.filter(function (c) { return c.status === '合作中'; }).map(function (c) {
+      return '<option>' + M.esc(c.name) + '</option>';
+    }).join('');
+    var products = [];
+    S.orders.forEach(function (o) { if (products.indexOf(o.product) < 0) products.push(o.product); });
+    var prodOpts = products.map(function (p) { return '<option>' + M.esc(p) + '</option>'; }).join('');
+
+    M.modal({
+      title: '新建销售订单',
+      wide: true,
+      body: '<div class="form-grid">' +
+        '<div class="field full"><span class="label">客户</span><select class="select" id="nsCus">' + cusOpts + '</select></div>' +
+        '<div class="field full"><span class="label">产品</span><select class="select" id="nsProd">' + prodOpts + '</select></div>' +
+        '<div class="field"><span class="label">数量（台）</span><input class="input" id="nsQty" type="number" value="100" min="1"></div>' +
+        '<div class="field"><span class="label">单价（元）</span><input class="input" id="nsPrice" type="number" value="7000" min="0" step="100"></div>' +
+        '<div class="field"><span class="label">金额（元）</span><input class="input" id="nsAmount" value="700,000.00" readonly></div>' +
+        '<div class="field"><span class="label">交期</span><input class="input" id="nsDate" type="date" value="2026-11-06"></div>' +
+        '<div class="field"><span class="label">下单日期</span><input class="input" value="2026-10-25" readonly></div>' +
+        '<div class="field"><span class="label">订单类型</span><input class="input" value="标准销售订单" readonly></div>' +
+        '<div class="field full"><span class="label">备注</span><textarea class="textarea" id="nsNote" placeholder="可选：交付要求 / 包装标识 / 收货地址"></textarea></div>' +
+        '</div><div class="note" style="margin-top:12px">提交后生成销售订单并校验客户信用额度；订单进入生产备货，发货前需完成出库登记。</div>',
+      footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" id="nsSubmit">提交订单</button>',
+      onMount: function (card, close) {
+        var qty = card.querySelector('#nsQty');
+        var price = card.querySelector('#nsPrice');
+        var amount = card.querySelector('#nsAmount');
+        function calc() {
+          var v = (Number(qty.value) || 0) * (Number(price.value) || 0);
+          amount.value = v.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        qty.addEventListener('input', calc);
+        price.addEventListener('input', calc);
+        calc();
+        card.querySelector('#nsSubmit').addEventListener('click', function () {
+          var n = Number(qty.value) || 0;
+          var p = Number(price.value) || 0;
+          if (!n) { M.invalid(qty, '请输入有效的销售数量'); return; }
+          if (!p) { M.invalid(price, '请输入有效的销售单价'); return; }
+          var row = {
+            no: 'SO-261025-009',
+            customer: card.querySelector('#nsCus').value,
+            product: card.querySelector('#nsProd').value,
+            qty: n,
+            amount: Number((n * p / 10000).toFixed(2)),
+            orderDate: '2026-10-25',
+            deliveryDate: card.querySelector('#nsDate').value || '2026-11-06',
+            status: '生产中'
+          };
+          var exists = soRows.some(function (x) { return x.no === row.no; });
+          if (exists) {
+            close();
+            M.toast('销售订单 ' + row.no + ' 已存在，请勿重复创建', 'warn');
+            return;
+          }
+          soRows.unshift(row);
+          MES.save();
+          renderSo();
+          close();
+          M.toast('销售订单已创建：SO-261025-009', 'ok', {
+            label: '撤销',
+            onClick: function () {
+              var i = S.orders.indexOf(row);
+              if (i > -1) S.orders.splice(i, 1);
+              MES.save();
+              renderSo();
+              M.toast('已撤销销售订单：SO-261025-009', 'ok');
+            }
+          });
+        });
+      }
+    });
+  }
+
+  /* ---------- 出库登记 ---------- */
+  function openOutbound(preset) {
+    var list = S.orders.filter(function (r) { return r.status === '待发货'; });
+    if (!list.length) { M.toast('暂无待发货的销售订单', 'warn'); return; }
+    var chosen = list.filter(function (r) { return r.no === preset; })[0] || list[0];
+    var opts = list.map(function (r) {
+      return '<option value="' + M.esc(r.no) + '"' + (r.no === chosen.no ? ' selected' : '') + '>' +
+        M.esc(r.no + ' · ' + r.customer + ' · ' + r.product) + '</option>';
+    }).join('');
+
+    M.modal({
+      title: '销售出库登记',
+      body: '<div class="form-grid">' +
+        '<div class="field full"><span class="label">销售订单</span><select class="select" id="obSo">' + opts + '</select></div>' +
+        '<div class="field"><span class="label">出库数量（台）</span><input class="input" id="obQty" type="number" value="' + chosen.qty + '" min="1"></div>' +
+        '<div class="field"><span class="label">发货仓库</span><select class="select" id="obWh"><option>成品库 F</option><option>原料库 A</option><option>AS 线边库</option></select></div>' +
+        '<div class="field"><span class="label">出库日期</span><input class="input" value="2026-10-25" readonly></div>' +
+        '<div class="field"><span class="label">物流方式</span><select class="select"><option>顺丰供应链物流</option><option>客户自提</option><option>专车配送</option></select></div>' +
+        '</div><div class="note" style="margin-top:12px">出库单生成后自动扣减成品库存，并同步生成销售出库单与 U8C 存货凭证。</div>',
+      footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" id="obSubmit">确认出库</button>',
+      onMount: function (card, close) {
+        var sel = card.querySelector('#obSo');
+        var qty = card.querySelector('#obQty');
+        sel.addEventListener('change', function () {
+          var r = list.filter(function (x) { return x.no === sel.value; })[0];
+          if (r) qty.value = r.qty;
+        });
+        card.querySelector('#obSubmit').addEventListener('click', function () {
+          var order = list.filter(function (x) { return x.no === sel.value; })[0];
+          var n = Number(qty.value) || 0;
+          if (!order) return;
+          if (!n) { M.toast('请填写出库数量', 'warn'); return; }
+          if (n > order.qty) { M.toast('出库数量不能超过订单数量 ' + order.qty + ' 台', 'warn'); return; }
+          var wh = card.querySelector('#obWh').value;
+          if (S.outbounds.some(function (x) { return x.no === 'CK-261025-019'; })) {
+            close();
+            M.toast('该出库单已生成，请勿重复提交', 'warn');
+            return;
+          }
+          order.status = n >= order.qty ? '已发货' : '部分发货';
+          S.outbounds.unshift({
+            no: 'CK-261025-019', order: order.no, customer: order.customer, product: order.product,
+            qty: n, warehouse: wh, date: '2026-10-25', status: '已出库'
+          });
+          var inv = ((DB.inventory && DB.inventory.stock) || []).filter(function (s) { return s.name === order.product; })[0];
+          if (inv) inv.qty = Math.max(0, inv.qty - n);
+          if (DB.costing && DB.costing.vouchers) {
+            DB.costing.vouchers.unshift({
+              no: 'JZ-261025-009', type: '销售出库', source: 'CK-261025-019',
+              amount: Number((order.amount / (order.qty || 1) * n).toFixed(2)), period: '2026-10', status: '待记账', time: '12:10'
+            });
+          }
+          if (DB.u8c && DB.u8c.vouchers) {
+            DB.u8c.vouchers.unshift({
+              no: 'CU-261025-022', type: '存货凭证', source: '销售出库 CK-261025-019',
+              amount: Number((order.amount / (order.qty || 1) * n).toFixed(2)), direction: 'MES → U8C', status: '已同步', time: '12:10'
+            });
+          }
+          MES.save();
+          outTable.refresh(S.outbounds);
+          renderSo();
+          close();
+          M.toast('销售出库单已生成，库存已扣减，U8C 凭证已同步', 'ok', {
+            label: '查看库存',
+            onClick: function () { MES.go('inventory.html', { tab: 'stock', q: order.product }); }
+          });
+        });
+      }
+    });
+  }
+
+  /* ---------- 开票确认 ---------- */
+  function openInvoiceConfirm(preset) {
+    var pending = S.invoices.filter(function (r) { return r.status === '待开票'; });
+    if (!pending.length) { M.toast('当前没有待开票的发票', 'warn'); return; }
+    var chosen = pending.filter(function (r) { return r.no === preset; })[0] || pending[0];
+    var opts = pending.map(function (r) {
+      return '<option value="' + M.esc(r.no) + '"' + (r.no === chosen.no ? ' selected' : '') + '>' +
+        M.esc(r.no + ' · ' + r.customer + ' · ' + r.amount.toFixed(1) + ' 万元') + '</option>';
+    }).join('');
+
+    M.modal({
+      title: '开票确认',
+      body: '<div class="form-grid">' +
+        '<div class="field full"><span class="label">待开票发票</span><select class="select" id="icNo">' + opts + '</select></div>' +
+        '<div class="field"><span class="label">客户</span><input class="input" id="icCus" readonly></div>' +
+        '<div class="field"><span class="label">开票日期</span><input class="input" id="icDate" type="date" value="2026-10-25"></div>' +
+        '<div class="field"><span class="label">开票金额（万元）</span><input class="input" id="icAmount" type="number" step="0.01" min="0"></div>' +
+        '<div class="field"><span class="label">税额（万元）</span><input class="input" id="icTax" type="number" step="0.01" min="0"></div>' +
+        '</div><div class="note" style="margin-top:12px">确认后发票状态变为「已开票」，同步生成应收单并推送 U8C；请核对开票金额与税额。</div>',
+      footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" id="icSubmit">确认开票</button>',
+      onMount: function (card, close) {
+        var sel = card.querySelector('#icNo');
+        var cus = card.querySelector('#icCus');
+        var amt = card.querySelector('#icAmount');
+        var tax = card.querySelector('#icTax');
+        function sync() {
+          var inv = pending.filter(function (x) { return x.no === sel.value; })[0];
+          if (!inv) return;
+          cus.value = inv.customer;
+          amt.value = inv.amount;
+          tax.value = inv.tax;
+        }
+        sel.addEventListener('change', sync);
+        sync();
+        card.querySelector('#icSubmit').addEventListener('click', function () {
+          var inv = S.invoices.filter(function (x) { return x.no === sel.value; })[0];
+          if (!inv) return;
+          if (!(Number(amt.value) > 0)) { M.toast('请填写有效的开票金额', 'warn'); return; }
+          inv.amount = Number(amt.value);
+          inv.tax = Number(tax.value) || 0;
+          inv.status = '已开票';
+          if (DB.u8c && DB.u8c.vouchers) {
+            DB.u8c.vouchers.unshift({
+              no: 'AR-261025-008', type: '应收单', source: '销售发票 ' + inv.no,
+              amount: inv.amount, direction: 'MES → U8C', status: '已同步', time: '12:15'
+            });
+          }
+          MES.save();
+          renderInv();
+          close();
+          M.toast('发票 ' + inv.no + ' 已开票确认（演示）', 'ok');
+        });
+      }
+    });
+  }
+
+  /* 快速新建：?new=1 */
+  if (MES.query('new') === '1') setTimeout(function () { openNewSo(); MES.clearQuery(); }, 160);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>质量追溯 · 制造与供应链协同平台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="trace">
+
+<aside class="app-nav" id="appNav"></aside>
+<div class="app-body">
+  <header class="app-topbar" id="appTopbar"></header>
+
+  <main class="app-content">
+    <div class="page-head">
+      <div>
+        <div class="page-title">质量追溯</div>
+        <div class="page-sub">序列号正向追溯 · 批次反向追溯 · 人机料法环全要素履历</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="page-actions">
+        <button class="btn" id="btnExportTrace"></button>
+        <button class="btn primary" id="btnScan"></button>
+      </div>
+    </div>
+
+    <section class="card mb-16">
+      <div class="card-body">
+        <div class="flex gap-12 wrap">
+          <div class="search-box" style="flex:1;min-width:260px">
+            <span id="searchIco"></span>
+            <input class="input" id="traceInput" placeholder="输入序列号 / 产品批次，例如 SN-SD3-261025-0091 或 B261025-03">
+          </div>
+          <button class="btn primary" id="btnTrace"></button>
+          <button class="btn" id="btnBatch">批次反查</button>
+          <span class="hint">支持扫码枪直接输入，回车即查</span>
+        </div>
+        <div class="divider"></div>
+        <div class="flex gap-8 wrap">
+          <span class="hint">最近查询：</span>
+          <span class="chip active" data-quick="SN-SD3-261025-0091">SN-SD3-261025-0091</span>
+          <span class="chip" data-quick="SN-SM8-261025-0038">SN-SM8-261025-0038</span>
+          <span class="chip" data-quick="SN-SD5-261025-0012">SN-SD5-261025-0012</span>
+          <span class="chip" data-quick="B261025-03">批次 B261025-03</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid-2-1 mb-16">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="profileTitle">产品档案</div>
+          <div class="spacer"></div>
+          <span class="tag ok" id="profileStatus">在制</span>
+        </div>
+        <div class="card-body">
+          <div id="profileDl" class="mb-16"></div>
+          <div class="divider"></div>
+          <div class="between mb-12">
+            <span class="hint">全流程履历</span>
+            <span class="tag outline" id="stepCount">5 个节点</span>
+          </div>
+          <div id="profileTimeline"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="paramTitle">工艺参数</div>
+          <div class="spacer"></div>
+          <span class="tag info">采集自设备</span>
+        </div>
+        <div class="card-body tight" id="paramTable"></div>
+      </section>
+    </div>
+
+    <div class="grid-2 mb-16">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="matTitle">关键件 / 物料谱系</div>
+          <div class="spacer"></div>
+          <span class="tag accent">4 项关键件</span>
+        </div>
+        <div class="card-body tight" id="matTable"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="inspTitle">检验记录</div>
+          <div class="spacer"></div>
+          <span class="tag ok">2 条</span>
+        </div>
+        <div class="card-body tight" id="inspTable"></div>
+      </section>
+    </div>
+
+    <div class="grid-2-1 mb-16">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="idxTitle">追溯索引</div>
+          <span class="card-sub">点击行加载追溯档案</span>
+          <div class="spacer"></div>
+          <span class="tag mute">近 24 小时</span>
+        </div>
+        <div class="card-body tight" id="idxTable"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="batchTitle">批次反查</div>
+          <div class="spacer"></div>
+          <span class="tag outline" id="batchNo">B261025-03</span>
+        </div>
+        <div class="card-body">
+          <div id="batchStrip" class="mb-12"></div>
+          <div class="divider"></div>
+          <div class="hint mb-8">同批次序列号（部分）</div>
+          <div id="batchSerials" class="flex gap-8 wrap"></div>
+          <div class="divider"></div>
+          <div class="note danger"><b>批次异常</b>：该批次绝缘不良 8 台（5.3%），已冻结 8 台成品，等待质量工程师评审处置。</div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="assets/mock.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var M = MESUI;
+  var T = DB.trace;
+
+  document.getElementById('btnExportTrace').innerHTML = M.icon('download') + '导出追溯报告';
+  document.getElementById('btnScan').innerHTML = M.icon('trace') + '扫码追溯';
+  document.getElementById('btnTrace').innerHTML = M.icon('search') + '正向追溯';
+  document.getElementById('searchIco').innerHTML = M.icon('search');
+  document.getElementById('profileTitle').innerHTML = M.icon('fileText') + '产品档案';
+  document.getElementById('paramTitle').innerHTML = M.icon('gauge') + '工艺参数';
+  document.getElementById('matTitle').innerHTML = M.icon('package') + '关键件 / 物料谱系';
+  document.getElementById('inspTitle').innerHTML = M.icon('shield') + '检验记录';
+  document.getElementById('idxTitle').innerHTML = M.icon('layers') + '追溯索引';
+  document.getElementById('batchTitle').innerHTML = M.icon('sync') + '批次反查';
+
+  /* 索引表 */
+  M.table({
+    mount: '#idxTable',
+    columns: [
+      { key: 'serial', label: '序列号', cls: 'mono' },
+      { key: 'product', label: '产品' },
+      { key: 'batch', label: '批次', cls: 'mono' },
+      { key: 'offline', label: '下线时间', cls: 'mono' },
+      { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } }
+    ],
+    rows: T.index.map(function (r) {
+      return { serial: r.serial, product: r.product.replace('伺服驱动器', '').replace('伺服电机', ''), batch: r.batch, offline: r.offline, status: r.status };
+    }),
+    pageSize: 8,
+    search: false,
+    onRowClick: function (r) { loadSerial(r.serial); }
+  });
+
+  /* 正向追溯渲染 */
+  function loadSerial(serial, silent) {
+    var d = JSON.parse(JSON.stringify(T.bySerial));
+    if (serial) d.serial = serial;
+    renderSerial(d);
+    document.getElementById('traceInput').value = serial || d.serial;
+    if (!silent) M.toast('已加载 ' + d.serial + ' 的追溯档案', 'ok');
+  }
+
+  function renderSerial(d) {
+    document.getElementById('profileStatus').textContent = d.status;
+    document.getElementById('profileStatus').className = 'tag ' + M.toneOf(d.status);
+    document.getElementById('stepCount').textContent = d.steps.length + ' 个节点';
+
+    M.dl('#profileDl', [
+      ['序列号', d.serial], ['产品', d.product], ['批次', d.batch],
+      ['客户订单', d.order], ['客户', d.customer]
+    ]);
+    M.timeline('#profileTimeline', d.steps);
+
+    M.table({
+      mount: '#paramTable', rows: d.params, pageSize: 6, search: false, exportName: '工艺参数',
+      columns: [
+        { key: 'name', label: '参数' },
+        { key: 'value', label: '实测值', cls: 'mono' },
+        { key: 'std', label: '标准', cls: 'mono' },
+        { key: 'result', label: '判定', formatter: function (r) { return M.tag(r.result); } }
+      ]
+    });
+
+    M.table({
+      mount: '#matTable', rows: d.materials, pageSize: 6, search: false, exportName: '物料谱系',
+      columns: [
+        { key: 'code', label: '物料编码', cls: 'mono' },
+        { key: 'name', label: '名称' },
+        { key: 'batch', label: '供应商批次', cls: 'mono' },
+        { key: 'supplier', label: '供应商' },
+        { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } }
+      ]
+    });
+
+    M.table({
+      mount: '#inspTable', rows: d.inspections, pageSize: 6, search: false,
+      columns: [
+        { key: 'no', label: '检验单', cls: 'mono' },
+        { key: 'type', label: '类型' },
+        { key: 'time', label: '时间', cls: 'mono' },
+        { key: 'result', label: '结果', formatter: function (r) { return M.tag(r.result); } }
+      ]
+    });
+  }
+
+  /* 批次反查渲染 */
+  function loadBatch(batch, silent) {
+    var d = JSON.parse(JSON.stringify(T.byBatch));
+    if (batch) d.batch = batch;
+    document.getElementById('batchNo').textContent = d.batch;
+    M.statStrip('#batchStrip', [
+      { k: '批次数量', v: d.qty, unit: '台' },
+      { k: '合格率', v: d.passRate, unit: '%', color: 'var(--warning)' },
+      { k: '异常数', v: d.issues, unit: '台', color: 'var(--danger)' },
+      { k: '状态', v: '冻结' }
+    ]);
+    document.getElementById('batchSerials').innerHTML = d.serials.map(function (s) {
+      return '<span class="chip">' + s + '</span>';
+    }).join('');
+    if (!silent) M.toast('已加载批次 ' + d.batch + ' 反查结果', 'ok');
+  }
+
+  function doSearch() {
+    var v = document.getElementById('traceInput').value.trim();
+    if (!v) { M.toast('请输入序列号或批次号', 'warn'); return; }
+    if (v.indexOf('B') === 0) loadBatch(v);
+    else loadSerial(v);
+  }
+
+  document.getElementById('btnTrace').addEventListener('click', doSearch);
+  document.getElementById('btnBatch').addEventListener('click', function () {
+    var v = document.getElementById('traceInput').value.trim();
+    loadBatch(v.indexOf('B') === 0 ? v : 'B261025-03');
+  });
+  document.getElementById('btnScan').addEventListener('click', function () {
+    M.modal({
+      title: '扫码追溯',
+      body: '<div class="note mb-12">请将扫码枪对准产品铭牌二维码，或手工输入序列号。</div>' +
+        '<div class="search-box"><input class="input" id="scanInput" placeholder="等待扫码输入…" autofocus></div>',
+      footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" id="scanOk">查询</button>',
+      onMount: function (card, close) {
+        card.querySelector('#scanInput').focus();
+        card.querySelector('#scanOk').addEventListener('click', function () {
+          var v = card.querySelector('#scanInput').value.trim() || 'SN-SD3-261025-0091';
+          close();
+          loadSerial(v);
+        });
+      }
+    });
+  });
+  document.getElementById('traceInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') doSearch();
+  });
+  document.querySelectorAll('[data-quick]').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      document.querySelectorAll('[data-quick]').forEach(function (c) { c.classList.remove('active'); });
+      chip.classList.add('active');
+      var v = chip.getAttribute('data-quick');
+      document.getElementById('traceInput').value = v;
+      if (v.indexOf('B') === 0) loadBatch(v); else loadSerial(v);
+    });
+  });
+  document.getElementById('btnExportTrace').addEventListener('click', function () {
+    M.exportCsv('追溯档案', [
+      { label: '序列号', key: 'serial' }, { label: '产品', key: 'product' },
+      { label: '批次', key: 'batch' }, { label: '客户订单', key: 'order' }
+    ], [T.bySerial]);
+  });
+
+  /* 首次加载（支持 ?serial= / ?batch= 深链接） */
+  var qSerial = MES.query('serial');
+  var qBatch = MES.query('batch');
+  if (qSerial) loadSerial(qSerial, true); else renderSerial(T.bySerial);
+  loadBatch(qBatch || 'B261025-03', true);
+  if (qBatch) document.getElementById('traceInput').value = qBatch;
+});
+</script>
+</body>
+</html>

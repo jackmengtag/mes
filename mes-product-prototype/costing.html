@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>存货核算 · 制造与供应链协同平台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="costing">
+
+<aside class="app-nav" id="appNav"></aside>
+<div class="app-body">
+  <header class="app-topbar" id="appTopbar"></header>
+  <main class="app-content">
+    <div class="page-head">
+      <div>
+        <div class="page-title">存货核算</div>
+        <div class="page-sub">单据记账 · 出入库调整 · 收发存报表 · 科目余额 · 期末结账</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="page-actions">
+        <button class="btn" id="btnClosePeriod"></button>
+        <button class="btn primary" id="btnAddAdj"></button>
+      </div>
+    </div>
+
+    <div id="kpiGrid" class="grid-4 stagger mb-16"></div>
+
+    <div class="grid-2-1 mb-16">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="pendingTitle"></div>
+          <div class="spacer"></div>
+          <span class="tag warn" id="pendingCount">—</span>
+          <button class="btn sm primary" id="btnBatchPost"></button>
+        </div>
+        <div class="card-body tight" id="pendingTable"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="flowTitle"></div>
+          <span class="card-sub">单据 → 凭证 → U8C</span>
+          <div class="spacer"></div>
+          <span class="tag ok">U8C 已连接</span>
+        </div>
+        <div class="card-body">
+          <div id="postFlow"></div>
+          <div class="divider"></div>
+          <div class="note"><b>当前环节</b>：凭证生成中，待处理 5 张单据；生成完成后自动推送 U8C，同步成功后进入期末结账。</div>
+        </div>
+      </section>
+    </div>
+
+    <section class="card mb-16">
+      <div class="card-head">
+        <div class="card-title" id="monthlyTitle"></div>
+        <span class="card-sub">单位：万元 · 先进先出法核算</span>
+        <div class="spacer"></div>
+        <span class="tag accent">2026-10</span>
+      </div>
+      <div class="card-body">
+        <div class="split">
+          <div>
+            <div class="between mb-8"><span class="hint">入库金额</span><span class="mono sub" id="monthlyInSum">—</span></div>
+            <div id="monthlyIn"></div>
+          </div>
+          <div>
+            <div class="between mb-8"><span class="hint">出库金额</span><span class="mono sub" id="monthlyOutSum">—</span></div>
+            <div id="monthlyOut"></div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="hint">采用先进先出法核算：入库按批次成本登记，出库按最早批次结转，批次差异与盘点差异通过调整单补记。</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div class="card-title" id="ledgerTitle"></div>
+        <span class="card-sub">记账凭证 / 调整单 / 核算报表 / 科目余额</span>
+        <div class="spacer"></div>
+        <span class="tag info">会计期间 2026-10</span>
+      </div>
+      <div class="card-body tight">
+        <div class="tabs" data-tabs id="costTabs" style="padding:0 14px">
+          <button class="tab active" data-tab="voucher">记账凭证</button>
+          <button class="tab" data-tab="adjust">调整单</button>
+          <button class="tab" data-tab="report">核算报表</button>
+          <button class="tab" data-tab="account">科目余额</button>
+        </div>
+        <div class="tab-panel" data-panel="voucher"><div id="voucherTable"></div></div>
+        <div class="tab-panel hidden" data-panel="adjust"><div id="adjTable"></div></div>
+        <div class="tab-panel hidden" data-panel="report"><div id="reportTable"></div></div>
+        <div class="tab-panel hidden" data-panel="account"><div id="accountTable"></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="assets/mock.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var M = MESUI;
+  var C = DB.costing;
+
+  document.getElementById('btnClosePeriod').innerHTML = M.icon('check') + '期末结账';
+  document.getElementById('btnAddAdj').innerHTML = M.icon('plus') + '新增调整单';
+  document.getElementById('pendingTitle').innerHTML = M.icon('clipboard') + '待记账单据';
+  document.getElementById('flowTitle').innerHTML = M.icon('gitBranch') + '记账流程';
+  document.getElementById('monthlyTitle').innerHTML = M.icon('trend') + '月度收发存';
+  document.getElementById('ledgerTitle').innerHTML = M.icon('fileText') + '存货核算台账';
+  document.getElementById('btnBatchPost').innerHTML = M.icon('check') + '批量记账';
+  document.getElementById('pendingCount').textContent = C.pending.length + ' 张待记账';
+
+  /* KPI */
+  M.kpi('#kpiGrid', C.kpis, 4);
+
+  /* 记账流程 */
+  M.opFlow('#postFlow', [
+    { no: 1, name: '单据生成', meta: '今日 14 张', state: 'done' },
+    { no: 2, name: '单据审核', meta: '已审核 14 张', state: 'done' },
+    { no: 3, name: '成本计算', meta: '先进先出', state: 'done' },
+    { no: 4, name: '凭证生成', meta: '待生成 5 张', state: 'active' },
+    { no: 5, name: 'U8C 同步', meta: '待推送', state: 'todo' },
+    { no: 6, name: '期末结账', meta: '期间未关闭', state: 'todo' }
+  ]);
+
+  /* 月度收发存 */
+  M.vbars('#monthlyIn', C.monthly.map(function (m) { return { h: m.h, v: m.in }; }), { unit: ' 万' });
+  M.vbars('#monthlyOut', C.monthly.map(function (m, i) { return { h: m.h, v: m.out, tone: i === C.monthly.length - 1 ? 'accent' : '' }; }), { unit: ' 万' });
+  var last = C.monthly[C.monthly.length - 1];
+  var prev = C.monthly[C.monthly.length - 2];
+  function growth(cur, before) {
+    var p = (cur - before) / before * 100;
+    return (p >= 0 ? '+' : '') + p.toFixed(1) + '%';
+  }
+  document.getElementById('monthlyInSum').textContent = M.num(last.in) + ' 万 · 环比 ' + growth(last.in, prev.in);
+  document.getElementById('monthlyOutSum').textContent = M.num(last.out) + ' 万 · 环比 ' + growth(last.out, prev.out);
+
+  /* 待记账单据 */
+  var pendingCols = [
+    { key: 'no', label: '单据号', cls: 'mono' },
+    { key: 'type', label: '类型', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.type) + '</span>'; } },
+    { key: 'date', label: '日期', cls: 'mono' },
+    { key: 'amount', label: '金额(万元)', cls: 'num', formatter: function (r) { return M.num(r.amount); } },
+    { key: 'reason', label: '挂起原因' },
+    { label: '操作', sortable: false, formatter: function () { return '<button class="btn sm" data-act="post">记账</button>'; } }
+  ];
+  var pendingTable = M.table({
+    mount: '#pendingTable', columns: pendingCols, rows: C.pending, pageSize: 5,
+    exportName: '待记账单据', searchPlaceholder: '搜索单据号 / 类型 / 原因',
+    onAction: function (act, r) {
+      if (act !== 'post' || !r) return;
+      C.pending = C.pending.filter(function (x) { return x.no !== r.no; });
+      pendingTable.refresh(C.pending);
+      document.getElementById('pendingCount').textContent = C.pending.length + ' 张待记账';
+      M.toast('单据 ' + r.no + ' 已记账，凭证已生成（演示）', 'ok');
+    }
+  });
+
+  /* 记账凭证 */
+  var voucherCols = [
+    { key: 'no', label: '凭证号', cls: 'mono' },
+    { key: 'type', label: '业务类型', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.type) + '</span>'; } },
+    { key: 'source', label: '来源单据', cls: 'mono' },
+    { key: 'amount', label: '金额(万元)', cls: 'num', formatter: function (r) { return M.num(r.amount); } },
+    { key: 'period', label: '期间', cls: 'mono' },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } },
+    { key: 'time', label: '时间', cls: 'mono' },
+    { label: '操作', sortable: false, formatter: function (r) {
+      return r.status === '待记账' ? '<button class="btn sm" data-act="post">记账</button>' : '<span class="muted">—</span>';
+    } }
+  ];
+  var voucherTable = M.table({
+    mount: '#voucherTable', columns: voucherCols, rows: C.vouchers, pageSize: 8,
+    exportName: '记账凭证', searchPlaceholder: '搜索凭证号 / 来源单据',
+    rowClass: function (r) { return r.status === '待记账' ? 'row-warn' : ''; },
+    onAction: function (act, r) {
+      if (act !== 'post' || !r) return;
+      r.status = '已记账';
+      MES.save();
+      voucherTable.refresh(C.vouchers);
+      M.toast('凭证 ' + r.no + ' 已记账并推送 U8C（演示）', 'ok');
+    }
+  });
+
+  /* 调整单 */
+  var adjTable = M.table({
+    mount: '#adjTable',
+    columns: [
+      { key: 'no', label: '调整单号', cls: 'mono' },
+      { key: 'material', label: '物料' },
+      { key: 'warehouse', label: '仓库' },
+      { key: 'qty', label: '数量', cls: 'num', formatter: function (r) { return M.num(r.qty); } },
+      { key: 'amount', label: '调整金额(万元)', cls: 'num', formatter: function (r) {
+        return '<span style="color:' + (r.amount < 0 ? 'var(--danger)' : 'var(--success)') + '">' +
+          (r.amount > 0 ? '+' : '') + r.amount + '</span>';
+      } },
+      { key: 'reason', label: '原因' },
+      { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } }
+    ],
+    rows: C.adjustments, pageSize: 6, exportName: '出入库调整单',
+    searchPlaceholder: '搜索调整单号 / 物料 / 原因'
+  });
+
+  /* 核算报表 */
+  M.table({
+    mount: '#reportTable',
+    columns: [
+      { key: 'name', label: '报表名称' },
+      { key: 'period', label: '期间', cls: 'mono' },
+      { key: 'qty', label: '数量', cls: 'num', formatter: function (r) { return M.num(r.qty); } },
+      { key: 'amount', label: '金额(万元)', cls: 'num', formatter: function (r) { return M.num(r.amount); } },
+      { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status, 'ok'); } },
+      { label: '操作', sortable: false, formatter: function () { return '<button class="btn sm ghost" data-act="view">查看</button>'; } }
+    ],
+    rows: C.reports, pageSize: 6, exportName: '核算报表',
+    searchPlaceholder: '搜索报表名称 / 期间',
+    onAction: function (act, r) { if (act === 'view' && r) openReport(r); }
+  });
+
+  /* 科目余额 */
+  M.table({
+    mount: '#accountTable',
+    columns: [
+      { key: 'account', label: '科目', formatter: function (r) { return r.account === '合计' ? '<b>' + M.esc(r.account) + '</b>' : M.esc(r.account); } },
+      { key: 'opening', label: '期初(万元)', cls: 'num', formatter: function (r) { return M.num(r.opening); } },
+      { key: 'in', label: '本月收入(万元)', cls: 'num', formatter: function (r) { return M.num(r.in); } },
+      { key: 'out', label: '本月发出(万元)', cls: 'num', formatter: function (r) { return M.num(r.out); } },
+      { key: 'balance', label: '期末结存(万元)', cls: 'num', formatter: function (r) { return M.num(r.balance); } }
+    ],
+    rows: C.accounts, pageSize: 8, exportName: '科目余额', search: false
+  });
+
+  M.bindTabs(document);
+
+  /* ---------- 交互 ---------- */
+  function openReport(r) {
+    var bars;
+    if (r.name.indexOf('入库') > -1) {
+      bars = C.monthly.map(function (m) { return { name: m.h, v: m.in }; });
+    } else if (r.name.indexOf('出库') > -1) {
+      bars = C.monthly.map(function (m) { return { name: m.h, v: m.out }; });
+    } else {
+      bars = C.accounts.filter(function (a) { return a.account !== '合计'; })
+        .map(function (a) { return { name: a.account, v: a.balance }; });
+    }
+
+    M.drawer({
+      title: r.name,
+      sub: r.period + ' · ' + r.status,
+      body: '<div id="reportDl" class="mb-16"></div>' +
+        '<div class="divider"></div>' +
+        '<div class="between mb-8"><span class="hint">金额分布</span><span class="mono sub">单位：万元</span></div>' +
+        '<div id="reportBars"></div>' +
+        '<div class="note" style="margin-top:16px"><b>核算说明</b>：本报表按先进先出法生成，取数范围为 2026-10 已审核出入库单据、调整单及期初结存。</div>',
+      footer: '<button class="btn" data-close>关闭</button><div class="spacer"></div><button class="btn primary" id="reportExport"></button>',
+      onMount: function (card) {
+        M.dl(card.querySelector('#reportDl'), [
+          ['报表名称', r.name], ['会计期间', r.period],
+          ['数量', M.num(r.qty)], ['金额', M.num(r.amount) + ' 万元'],
+          ['状态', M.tag(r.status, 'ok'), 'html'], ['核算方法', '先进先出法'],
+          ['数据来源', '出入库单据 / 调整单 / 期初结存']
+        ]);
+        M.bars(card.querySelector('#reportBars'), bars, { unit: ' 万' });
+        card.querySelector('#reportExport').innerHTML = M.icon('download') + '导出报表';
+        card.querySelector('#reportExport').addEventListener('click', function () {
+          M.exportCsv(r.name, [
+            { key: 'name', label: '报表名称' },
+            { key: 'period', label: '期间' },
+            { key: 'qty', label: '数量' },
+            { key: 'amount', label: '金额(万元)' },
+            { key: 'status', label: '状态' }
+          ], [r]);
+        });
+      }
+    });
+  }
+
+  /* 新增调整单 */
+  function openAdjustment() {
+    var stocks = DB.inventory.stock;
+    var materialOpts = stocks.map(function (s) {
+      return '<option value="' + M.esc(s.code) + '">' + M.esc(s.code + ' · ' + s.name) + '（' + M.esc(s.warehouse) + '）</option>';
+    }).join('');
+    var warehouseOpts = DB.inventory.warehouses.map(function (w) {
+      return '<option value="' + M.esc(w.name) + '">' + M.esc(w.name) + '</option>';
+    }).join('');
+
+    var body = '<div class="form-grid">' +
+      '<div class="field full"><span class="label">物料</span><select class="select" id="adjMaterial">' + materialOpts + '</select></div>' +
+      '<div class="field full"><span class="label">仓库</span><select class="select" id="adjWarehouse">' + warehouseOpts + '</select></div>' +
+      '<div class="field full"><span class="label">调整金额（万元，可为负数）</span><input class="input" id="adjAmount" type="number" step="0.1" value="0"></div>' +
+      '<div class="field full"><span class="label">原因</span><textarea class="textarea" id="adjReason" placeholder="例如：批次尾差 / 盘点差异 / 暂估回冲"></textarea></div>' +
+    '</div>' +
+    '<div class="note" style="margin-top:12px">调整单审批通过后计入存货核算，生成调整凭证并同步 U8C；期间结账后不可新增。</div>';
+
+    M.modal({
+      title: '新增调整单',
+      body: body,
+      footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" id="adjSubmit">提交调整单</button>',
+      onMount: function (card, close) {
+        card.querySelector('#adjSubmit').addEventListener('click', function () {
+          var amount = Number(card.querySelector('#adjAmount').value) || 0;
+          if (!amount) { M.invalid(card.querySelector('#adjAmount'), '调整金额不能为 0'); return; }
+          var code = card.querySelector('#adjMaterial').value;
+          var stock = ((DB.inventory && DB.inventory.stock) || []).filter(function (s) { return s.code === code; })[0];
+          C.adjustments.unshift({
+            no: 'TZ-261025-003', material: stock ? stock.name : code,
+            warehouse: card.querySelector('#adjWarehouse').value, qty: 0,
+            amount: amount, reason: card.querySelector('#adjReason').value || '手工调整', status: '待审核'
+          });
+          MES.save();
+          adjTable.refresh(C.adjustments);
+          close();
+          M.toast('调整单已创建：TZ-261025-003，等待审核', 'ok');
+        });
+      }
+    });
+  }
+
+  /* 批量记账 */
+  document.getElementById('btnBatchPost').addEventListener('click', function () {
+    M.confirm({
+      title: '批量记账',
+      body: '将对当前 <b>' + C.pending.length + '</b> 张待记账单据执行批量记账，生成凭证后自动推送 U8C。',
+      note: '记账期间 2026-10，记账后不可直接修改，如需调整请创建调整单。',
+      okText: '确认记账',
+      onOk: function () {
+        C.pending = [];
+        pendingTable.refresh(C.pending);
+        document.getElementById('pendingCount').textContent = '0 张待记账';
+        C.vouchers.forEach(function (v) { if (v.status === '待记账') v.status = '已记账'; });
+        MES.save();
+        voucherTable.refresh(C.vouchers);
+        M.toast('已记账 5 张单据，凭证已生成并推送 U8C（演示）', 'ok');
+      }
+    });
+  });
+
+  /* 期末结账 */
+  document.getElementById('btnClosePeriod').addEventListener('click', function () {
+    M.confirm({
+      title: '期末结账 · 2026-10',
+      body: '期末结账将关闭 <b>2026-10</b> 会计期间，完成存货核算、凭证生成与 U8C 同步；结账后该期间单据不可再记账。',
+      note: '请确认本月所有出入库单据已审核、待记账单据已处理。',
+      okText: '确认结账',
+      onOk: function () {
+        M.toast('2026-10 期末结账完成（演示）', 'ok');
+      }
+    });
+  });
+
+  document.getElementById('btnAddAdj').addEventListener('click', openAdjustment);
+
+  /* 快速新建：?new=adjust */
+  if (MES.query('new') === 'adjust') setTimeout(function () { openAdjustment(); MES.clearQuery(); }, 160);
+});
+</script>
+</body>
+</html>

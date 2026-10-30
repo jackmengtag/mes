@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>供应链总览 · 制造与供应链协同平台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="scm">
+
+<aside class="app-nav" id="appNav"></aside>
+<div class="app-body">
+  <header class="app-topbar" id="appTopbar"></header>
+
+  <main class="app-content">
+    <div class="page-head">
+      <div>
+        <div class="page-title">供应链总览</div>
+        <div class="page-sub" id="pageSub">岳阳爱达兴智能科技 · 江苏高铂尔智能科技 · 采购 / 销售 / 库存 / 生产 / 存货核算 · 2026-10-25</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="page-actions">
+        <span class="tag ok"><span class="led ok pulse" style="margin-right:2px"></span>实时协同</span>
+        <button class="btn" id="btnRefresh"></button>
+        <button class="btn primary" id="btnExport"></button>
+      </div>
+    </div>
+
+    <div id="kpiGrid" class="grid-4 stagger mb-16"></div>
+
+    <section class="card mb-16">
+      <div class="card-head">
+        <div class="card-title" id="mapTitle"></div>
+        <span class="card-sub">供应商 → 采购 → 库存 → 生产 → 销售 → U8C 财务</span>
+        <div class="spacer"></div>
+        <span class="tag info">业务总图</span>
+      </div>
+      <div class="card-body">
+        <div id="bizMap"></div>
+        <div class="divider"></div>
+        <div class="legend">
+          <span class="lg"><span class="dot ok"></span>正常</span>
+          <span class="lg"><span class="dot warn"></span>预警（缺料 / 交付逾期）</span>
+          <span class="lg"><span class="dot primary"></span>业务主链路</span>
+          <span class="lg"><span class="dot mute"></span>U8C 负责存货凭证与应收应付</span>
+        </div>
+      </div>
+      <div class="card-foot">
+        <span class="hint">业务范围依据《爱达兴高铂尔供应链协同系统业务方案 V1.0》整理：采购、销售、生产制造、库存、存货核算、供应链协同与 U8C 接口。</span>
+      </div>
+    </section>
+
+    <div class="grid-2-1 mb-16">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="trendTitle"></div>
+          <span class="card-sub">单位：万元</span>
+          <div class="spacer"></div>
+          <span class="tag accent">10 月</span>
+        </div>
+        <div class="card-body">
+          <div class="split">
+            <div>
+              <div class="between mb-8"><span class="hint">销售额</span><span class="mono sub" id="salesSum">—</span></div>
+              <div id="salesBars"></div>
+            </div>
+            <div>
+              <div class="between mb-8"><span class="hint">采购额</span><span class="mono sub" id="purchaseSum">—</span></div>
+              <div id="purchaseBars"></div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div class="between mb-8"><span class="hint">近 14 日供应商交付准时率</span><span class="mono sub" id="deliveryNow">92.6%</span></div>
+          <div id="deliverySpark"></div>
+          <div class="chart-axis"><span>10-12</span><span>10-17</span><span>10-21</span><span>10-25</span></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="todoTitle"></div>
+          <div class="spacer"></div>
+          <span class="tag danger" id="todoCount">5 项</span>
+        </div>
+        <div class="card-body" id="todoTimeline"></div>
+      </section>
+    </div>
+
+    <div class="grid-2 mb-16">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="excTitle"></div>
+          <div class="spacer"></div>
+          <a class="btn sm ghost" href="collab.html">协同管理›</a>
+        </div>
+        <div class="card-body tight" id="excTable"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="stockTitle"></div>
+          <div class="spacer"></div>
+          <a class="btn sm ghost" href="inventory.html">库存管理›</a>
+        </div>
+        <div class="card-body tight" id="stockTable"></div>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="card-head">
+        <div class="card-title" id="u8cTitle"></div>
+        <span class="card-sub">存货凭证 · 应收单 · 应付单</span>
+        <div class="spacer"></div>
+        <span class="tag ok" id="u8cTag">同步率 99.9%</span>
+      </div>
+      <div class="card-body">
+        <div id="u8cStrip" class="mb-16"></div>
+        <div class="table-wrap" id="u8cTable"></div>
+      </div>
+      <div class="card-foot">
+        <span class="hint">最近同步 <span class="mono" id="u8cLast">—</span> · 会计期间 2026-10 · 失败凭证自动进入重试队列</span>
+        <div class="spacer"></div>
+        <a class="btn sm ghost" href="system.html">接口监控›</a>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="assets/mock.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var M = MESUI;
+  var S = DB.scm;
+
+  document.getElementById('btnRefresh').innerHTML = M.icon('refresh') + '刷新';
+  document.getElementById('btnExport').innerHTML = M.icon('download') + '导出快照';
+  document.getElementById('mapTitle').innerHTML = M.icon('link') + '业务总图';
+  document.getElementById('trendTitle').innerHTML = M.icon('trend') + '采购 / 销售与交付趋势';
+  document.getElementById('todoTitle').innerHTML = M.icon('alert') + '供应链待办';
+  document.getElementById('excTitle').innerHTML = M.icon('truck') + '交付异常';
+  document.getElementById('stockTitle').innerHTML = M.icon('warehouse') + '库存预警';
+  document.getElementById('u8cTitle').innerHTML = M.icon('sync') + 'U8C 凭证同步';
+  document.getElementById('pageSub').textContent =
+    DB.orgs[0].name + ' · ' + DB.orgs[1].name + ' · 采购 / 销售 / 库存 / 生产 / 存货核算 · ' + DB.plant.workDate;
+
+  M.kpi('#kpiGrid', S.kpis);
+  M.flow('#bizMap', S.bizMap);
+
+  /* 采购 / 销售趋势 */
+  var months = S.monthly;
+  M.vbars('#salesBars', months.map(function (x) { return { h: x.h, v: x.sales }; }), { unit: ' 万' });
+  M.vbars('#purchaseBars', months.map(function (x) { return { h: x.h, v: x.purchase }; }), { unit: ' 万' });
+  var last = months[months.length - 1];
+  document.getElementById('salesSum').textContent = M.num(last.sales) + ' 万 · 环比 +9.2%';
+  document.getElementById('purchaseSum').textContent = M.num(last.purchase) + ' 万 · 环比 +6.8%';
+
+  M.sparkline('#deliverySpark', S.deliveryTrend.map(function (x) { return x.v; }), 'accent');
+  document.getElementById('deliveryNow').textContent = S.deliveryTrend[S.deliveryTrend.length - 1].v + '%';
+
+  /* 待办 */
+  M.timeline('#todoTimeline', S.todos);
+  document.getElementById('todoCount').textContent = S.todos.length + ' 项';
+
+  /* 交付异常 */
+  var excCols = [
+    { key: 'supplier', label: '供应商' },
+    { key: 'po', label: '采购订单', cls: 'mono' },
+    { key: 'material', label: '物料' },
+    { key: 'qty', label: '数量', cls: 'num' },
+    { key: 'due', label: '应交日期', cls: 'mono' },
+    { key: 'delay', label: '逾期(天)', cls: 'num', formatter: function (r) { return r.delay > 0 ? '<span style="color:var(--danger)">' + r.delay + '</span>' : '<span class="muted">0</span>'; } },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } }
+  ];
+  M.table({
+    mount: '#excTable', columns: excCols, rows: S.exceptions, pageSize: 5,
+    exportName: '交付异常',
+    onRowClick: function (r) {
+      M.drawer({
+        title: r.supplier + ' · ' + r.material,
+        sub: r.po + ' · 应交 ' + r.due,
+        body: '<div id="excDl" class="mb-16"></div><div class="divider"></div><div class="note danger">' +
+          '<b>异常原因</b>：' + M.esc(r.reason) + '。建议采购员在协同门户与供应商重排交付计划，并同步调整生产投料。</div>',
+        footer: '<button class="btn" data-close>关闭</button><div class="spacer"></div><a class="btn primary" href="purchase.html?tab=orders&q=' + encodeURIComponent(r.po) + '">进入采购订单</a>',
+        onMount: function (card) {
+          M.dl(card.querySelector('#excDl'), [
+            ['供应商', r.supplier], ['采购订单', r.po], ['物料', r.material],
+            ['数量', r.qty + ' 件'], ['应交日期', r.due], ['逾期天数', r.delay + ' 天'],
+            ['责任人', r.owner], ['状态', M.tag(r.status), 'html']
+          ]);
+        }
+      });
+    }
+  });
+
+  /* 库存预警 */
+  M.table({
+    mount: '#stockTable',
+    columns: [
+      { key: 'material', label: '物料' },
+      { key: 'warehouse', label: '仓库' },
+      { key: 'current', label: '当前库存', cls: 'num' },
+      { key: 'safe', label: '安全库存', cls: 'num' },
+      { key: 'type', label: '预警类型', formatter: function (r) { return M.tag(r.type, 'warn'); } },
+      { key: 'owner', label: '责任人' }
+    ],
+    rows: S.stockAlerts,
+    pageSize: 5,
+    search: false,
+    exportName: '库存预警',
+    onRowClick: function (r) {
+      MES.go('inventory.html', { tab: 'alert', q: r.code });
+    }
+  });
+
+  /* U8C */
+  M.statStrip('#u8cStrip', [
+    { k: '会计期间', v: '2026-10' },
+    { k: '已同步', v: '5', unit: '单' },
+    { k: '失败', v: '1', unit: '单', color: 'var(--danger)' },
+    { k: '待推送', v: '2', unit: '单', color: 'var(--warning)' },
+    { k: '同步率', v: '99.9', unit: '%' }
+  ]);
+  document.getElementById('u8cLast').textContent = S.u8c.lastSync;
+
+  var u8cCols = [
+    { key: 'no', label: '单据号', cls: 'mono' },
+    { key: 'type', label: '类型', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.type) + '</span>'; } },
+    { key: 'source', label: '来源单据' },
+    { key: 'amount', label: '金额(万元)', cls: 'num' },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status, r.status === '失败' ? 'danger' : 'ok'); } },
+    { key: 'time', label: '时间', cls: 'mono' },
+    { key: 'op', label: '操作', sortable: false, formatter: function (r) {
+      return r.status === '失败' ? '<button class="btn sm" data-act="retry">重新推送</button>' : '<span class="muted">—</span>';
+    } }
+  ];
+  var u8cTable = M.table({
+    mount: '#u8cTable', columns: u8cCols, rows: S.u8c.vouchers, pageSize: 6, search: false,
+    onAction: function (act, r) {
+      if (act !== 'retry') return;
+      r.status = '已同步';
+      MES.save();
+      M.toast('凭证 ' + r.no + ' 已重新推送至 U8C（演示）', 'ok', {
+        label: '查看接口',
+        onClick: function () { MES.go('system.html', { q: r.no, mount: '#u8cTable' }); }
+      });
+      u8cTable.refresh(S.u8c.vouchers);
+    },
+    onRowClick: function (r) {
+      MES.go('system.html', { q: r.no, mount: '#u8cTable' });
+    }
+  });
+
+  /* 操作 */
+  document.getElementById('btnRefresh').addEventListener('click', function () {
+    var btn = this;
+    btn.disabled = true;
+    btn.classList.add('is-loading');
+    setTimeout(function () {
+      M.kpi('#kpiGrid', S.kpis);
+      M.toast('供应链数据已刷新 · ' + M.now(), 'ok');
+      btn.disabled = false;
+      btn.classList.remove('is-loading');
+    }, 320);
+  });
+  document.getElementById('btnExport').addEventListener('click', function () {
+    M.exportCsv('供应链异常快照', excCols, S.exceptions);
+  });
+});
+</script>
+</body>
+</html>

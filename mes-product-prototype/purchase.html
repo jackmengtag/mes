@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>采购管理 · 制造与供应链协同平台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="purchase">
+
+<aside class="app-nav" id="appNav"></aside>
+<div class="app-body">
+  <header class="app-topbar" id="appTopbar"></header>
+  <main class="app-content">
+    <div class="page-head">
+      <div>
+        <div class="page-title">采购管理</div>
+        <div class="page-sub">供应商 · 采购订单 · 到货入库 · 退货 · 发票结算 · 暂估</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="page-actions">
+        <button class="btn ghost" id="btnExport"></button>
+        <button class="btn" id="btnAudit"></button>
+        <button class="btn primary" id="btnNewPo"></button>
+      </div>
+    </div>
+
+    <div id="kpiGrid" class="grid-4 stagger mb-16"></div>
+
+    <section class="card mb-16">
+      <div class="card-head">
+        <div class="card-title" id="ledgerTitle"></div>
+        <span class="card-sub">供应商 / 订单 / 到货 / 退货 / 发票 / 结算</span>
+        <div class="spacer"></div>
+        <span class="tag outline">2026-10</span>
+      </div>
+      <div class="tabs" data-tabs style="padding:0 14px">
+        <button type="button" class="tab active" data-tab="suppliers">供应商档案</button>
+        <button type="button" class="tab" data-tab="orders">采购订单</button>
+        <button type="button" class="tab" data-tab="arrivals">到货与入库</button>
+        <button type="button" class="tab" data-tab="returns">退货与发票</button>
+        <button type="button" class="tab" data-tab="settlements">结算与暂估</button>
+      </div>
+      <div class="card-body tight">
+        <div class="tab-panel" data-panel="suppliers" style="padding-top:0">
+          <div id="supTable"></div>
+        </div>
+        <div class="tab-panel hidden" data-panel="orders" style="padding-top:0">
+          <div id="poTable"></div>
+        </div>
+        <div class="tab-panel hidden" data-panel="arrivals" style="padding-top:0">
+          <div id="arrTable"></div>
+          <div class="divider"></div>
+          <div class="hint" style="padding:0 14px 6px">入库单 · 采购入库</div>
+          <div id="rcpTable"></div>
+        </div>
+        <div class="tab-panel hidden" data-panel="returns" style="padding-top:0">
+          <div id="retTable"></div>
+          <div class="divider"></div>
+          <div class="hint" style="padding:0 14px 6px">采购发票 · 三单匹配</div>
+          <div id="invTable"></div>
+        </div>
+        <div class="tab-panel hidden" data-panel="settlements" style="padding-top:0">
+          <div id="setTable"></div>
+          <div class="divider"></div>
+          <div class="hint" style="padding:0 14px 6px">暂估单 · 月末暂估与回冲</div>
+          <div id="estTable"></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid-2">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="purTrendTitle"></div>
+          <span class="card-sub">单位：万元</span>
+          <div class="spacer"></div>
+          <span class="tag accent">10 月</span>
+        </div>
+        <div class="card-body">
+          <div id="purchaseBars"></div>
+          <div class="divider"></div>
+          <div class="hint" id="purTrendNote"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="supPerfTitle"></div>
+          <div class="spacer"></div>
+          <a class="btn sm ghost" href="collab.html">协同管理›</a>
+        </div>
+        <div class="card-body tight" id="supPerfTable"></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="assets/mock.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var M = MESUI;
+  var P = DB.purchase;
+
+  document.getElementById('btnExport').innerHTML = M.icon('download') + '导出采购订单';
+  document.getElementById('btnAudit').innerHTML = M.icon('shield') + '供应商审核';
+  document.getElementById('btnNewPo').innerHTML = M.icon('plus') + '新建采购订单';
+  document.getElementById('ledgerTitle').innerHTML = M.icon('clipboard') + '采购业务台账';
+  document.getElementById('purTrendTitle').innerHTML = M.icon('trend') + '采购趋势';
+  document.getElementById('supPerfTitle').innerHTML = M.icon('target') + '供应商绩效';
+
+  M.kpi('#kpiGrid', P.kpis);
+
+  function stTone(s) {
+    if (/已审核|已入库|已到货|已结算|已开票|已确认|已出库|已签收|已收款|已发货|合作中|已退货|已退款|已回冲/.test(s)) return 'ok';
+    if (/交付逾期|驳回|停用|暂停|已作废|不合格|拒收/.test(s)) return 'danger';
+    if (/待|部分|暂估|考察|未到货|处理中/.test(s)) return 'warn';
+    return 'mute';
+  }
+  function supTone(q) { return q === '已审核' ? 'ok' : q === '待审核' ? 'warn' : 'danger'; }
+
+  /* ---------- 供应商档案 ---------- */
+  var supCols = [
+    { key: 'code', label: '供应商编码', cls: 'mono' },
+    { key: 'name', label: '名称' },
+    { key: 'category', label: '分类' },
+    { key: 'level', label: '等级', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.level) + '</span>'; } },
+    { key: 'contact', label: '联系人' },
+    { key: 'phone', label: '电话', cls: 'mono' },
+    { key: 'qualified', label: '资质', formatter: function (r) { return M.tag(r.qualified, supTone(r.qualified)); } },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status, stTone(r.status)); } },
+    { key: 'op', label: '操作', sortable: false, formatter: function () { return '<button class="btn sm" data-act="audit">审核</button>'; } }
+  ];
+  function renderSup() {
+    M.table({
+      mount: '#supTable',
+      columns: supCols,
+      rows: P.suppliers,
+      pageSize: 8,
+      exportName: '供应商档案',
+      searchKeys: ['code', 'name', 'category', 'level', 'contact', 'phone', 'qualified', 'status'],
+      rowClass: function (r) { return r.qualified === '待审核' ? 'row-warn' : ''; },
+      onRowClick: openSupplier,
+      onAction: function (act, r) {
+        if (act === 'audit') openSupplierAudit(r.code);
+      }
+    });
+  }
+  renderSup();
+
+  /* ---------- 采购订单 ---------- */
+  var poCols = [
+    { key: 'no', label: '订单号', cls: 'mono' },
+    { key: 'supplier', label: '供应商' },
+    { key: 'material', label: '物料' },
+    { key: 'qty', label: '数量', cls: 'num' },
+    { key: 'amount', label: '金额(万元)', cls: 'num', formatter: function (r) { return Number(r.amount).toFixed(1); } },
+    { key: 'orderDate', label: '下单日期', cls: 'mono' },
+    { key: 'deliveryDate', label: '交期', cls: 'mono' },
+    { key: 'received', label: '已到货', cls: 'num', formatter: function (r) { return r.received + ' / ' + r.qty; } },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status, stTone(r.status)); } }
+  ];
+  var poRows = P.orders;
+  function renderPo() {
+    M.table({
+      mount: '#poTable',
+      columns: poCols,
+      rows: poRows,
+      pageSize: 8,
+      exportName: '采购订单',
+      selectable: true,
+      rowKey: 'no',
+      batchActions: [{ act: 'export', label: '导出所选' }, { act: 'arrive', label: '批量到货登记' }],
+      onBatch: function (act, sel) {
+        if (act !== 'arrive' || !sel.length) return;
+        M.toast('已选择 ' + sel.length + ' 张采购订单，从 ' + sel[0].no + ' 开始登记到货', 'ok');
+        openArrival(sel[0].no);
+      },
+      rowClass: function (r) { return r.status === '交付逾期' ? 'row-danger' : ''; },
+      onRowClick: openPo
+    });
+  }
+  renderPo();
+
+  /* ---------- 到货与入库 ---------- */
+  var arrTable = M.table({
+    mount: '#arrTable',
+    columns: [
+      { key: 'no', label: '到货单号', cls: 'mono' },
+      { key: 'po', label: '采购订单', cls: 'mono' },
+      { key: 'supplier', label: '供应商' },
+      { key: 'date', label: '到货日期', cls: 'mono' },
+      { key: 'qty', label: '到货数量', cls: 'num' },
+      { key: 'passed', label: '合格', cls: 'num' },
+      { key: 'rejected', label: '拒收', cls: 'num', formatter: function (r) { return r.rejected > 0 ? '<span class="tag danger">' + r.rejected + '</span>' : '<span class="muted">0</span>'; } },
+      { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status, stTone(r.status)); } }
+    ],
+    rows: P.arrivals,
+    pageSize: 5,
+    search: false,
+    exportName: '到货单',
+    onRowClick: openArrivalDetail
+  });
+
+  var rcpTable = M.table({
+    mount: '#rcpTable',
+    columns: [
+      { key: 'no', label: '入库单号', cls: 'mono' },
+      { key: 'po', label: '采购订单', cls: 'mono' },
+      { key: 'supplier', label: '供应商' },
+      { key: 'warehouse', label: '仓库' },
+      { key: 'qty', label: '数量', cls: 'num' },
+      { key: 'amount', label: '金额(万元)', cls: 'num', formatter: function (r) { return Number(r.amount).toFixed(1); } },
+      { key: 'date', label: '日期', cls: 'mono' },
+      { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status, stTone(r.status)); } }
+    ],
+    rows: P.receipts,
+    pageSize: 5,
+    search: false,
+    exportName: '采购入库单',
+    onRowClick: openReceiptDetail
+  });
+
+  /* ---------- 退货与发票 ---------- */
+  M.table({
+    mount: '#retTable',
+    columns: [
+      { key: 'no', label: '退货单号', cls: 'mono' },
+      { key: 'po', label: '采购订单', cls: 'mono' },
+      { key: 'supplier', label: '供应商' },
+      { key: 'material', label: '物料' },
+      { key: 'qty', label: '数量', cls: 'num' },
+      { key: 'reason', label: '退货原因' },
+      { key: 'amount', label: '金额(万元)', cls: 'num', formatter: function (r) { return Number(r.amount).toFixed(2); } },
+      { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status, stTone(r.status)); } }
+    ],
+    rows: P.returns,
+    pageSize: 5,
+    search: false,
+    exportName: '采购退货单',
+    onRowClick: openReturnDetail
+  });
+
+  M.table({
+    mount: '#invTable',
+    columns: [
+      { key: 'no', label: '发票号', cls: 'mono' },
+      { key: 'po', label: '采购订单', cls: 'mono' },
+      { key: 'supplier', label: '供应商' },
+      { key: 'amount', label: '金额(万元)', cls: 'num', formatter: function (r) { return Number(r.amount).toFixed(1); } },
+      { key: 'tax', label: '税额(万元)', cls: 'num', formatter: function (r) { return Number(r.tax).toFixed(2); } },
+      { key: 'type', label: '类型', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.type) + '</span>'; } },
+      { key: 'date', label: '日期', cls: 'mono' },
+      { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status, stTone(r.status)); } }
+    ],
+    rows: P.invoices,
+    pageSize: 5,
+    search: false,
+    exportName: '采购发票',
+    onRowClick: openInvoiceDetail
+  });
+
+  /* ---------- 结算与暂估 ---------- */
+  M.table({
+    mount: '#setTable',
+    columns: [
+      { key: 'no', label: '结算单号', cls: 'mono' },
+      { key: 'supplier', label: '供应商' },
+      { key: 'invoice', label: '关联发票', cls: 'mono' },
+      { key: 'amount', label: '结算金额(万元)', cls: 'num', formatter: function (r) { return Number(r.amount).toFixed(1); } },
+      { key: 'date', label: '结算日期', cls: 'mono' },
+      { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status, stTone(r.status)); } }
+    ],
+    rows: P.settlements,
+    pageSize: 5,
+    search: false,
+    exportName: '采购结算单',
+    onRowClick: openSettlementDetail
+  });
+
+  M.table({
+    mount: '#estTable',
+    columns: [
+      { key: 'no', label: '暂估单号', cls: 'mono' },
+      { key: 'po', label: '采购订单', cls: 'mono' },
+      { key: 'supplier', label: '供应商' },
+      { key: 'material', label: '物料' },
+      { key: 'qty', label: '数量', cls: 'num' },
+      { key: 'amount', label: '暂估金额(万元)', cls: 'num', formatter: function (r) { return Number(r.amount).toFixed(1); } },
+      { key: 'period', label: '会计期间', cls: 'mono' },
+      { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status, stTone(r.status)); } }
+    ],
+    rows: P.estimates,
+    pageSize: 5,
+    search: false,
+    exportName: '采购暂估单',
+    onRowClick: openEstimateDetail
+  });
+
+  /* ---------- 采购趋势 ---------- */
+  M.vbars('#purchaseBars', DB.scm.monthly.map(function (x) { return { h: x.h, v: x.purchase }; }), { unit: ' 万' });
+  var lastMonth = DB.scm.monthly[DB.scm.monthly.length - 1];
+  document.getElementById('purTrendNote').textContent =
+    '10 月采购额 ' + M.num(lastMonth.purchase) + ' 万元，环比 +6.8%';
+
+  /* ---------- 供应商绩效 ---------- */
+  M.table({
+    mount: '#supPerfTable',
+    columns: [
+      { key: 'supplier', label: '供应商' },
+      { key: 'orders', label: '订单数', cls: 'num' },
+      { key: 'ontime', label: '准时率', cls: 'num', formatter: function (r) {
+        return '<span class="tag ' + (r.ontime >= 95 ? 'ok' : r.ontime >= 80 ? 'warn' : 'danger') + '">' + r.ontime.toFixed(1) + '%</span>';
+      } },
+      { key: 'quality', label: '质量得分', cls: 'num', formatter: function (r) { return r.quality.toFixed(1); } },
+      { key: 'score', label: '综合评分', cls: 'num', formatter: function (r) { return '<b>' + r.score.toFixed(1) + '</b>'; } },
+      { key: 'level', label: '等级', formatter: function (r) {
+        return M.tag(r.level, r.level === 'A' ? 'ok' : r.level === 'B' ? 'info' : 'danger');
+      } }
+    ],
+    rows: DB.collab.supplierSummary,
+    pageSize: 6,
+    search: false,
+    exportName: '供应商绩效'
+  });
+
+  /* ---------- 页头操作 ---------- */
+  document.getElementById('btnNewPo').addEventListener('click', function () { openNewPo(); });
+  document.getElementById('btnAudit').addEventListener('click', function () { openSupplierAudit(); });
+  document.getElementById('btnExport').addEventListener('click', function () {
+    M.exportCsv('采购订单', poCols, poRows);
+  });
+
+  M.bindTabs(document);
+
+  /* ---------- 抽屉 ---------- */
+  function openDoc(opts) {
+    M.drawer({
+      title: opts.title,
+      sub: opts.sub,
+      body: '<div id="docDl" class="mb-16"></div>' +
+        '<div class="divider"></div>' +
+        '<div class="hint mb-8">' + M.esc(opts.flowLabel || '单据流转') + '</div>' +
+        '<div id="docFlow"></div>' +
+        (opts.note ? '<div class="note warn mt-12">' + opts.note + '</div>' : ''),
+      footer: opts.footer || '<button class="btn" data-close>关闭</button><div class="spacer"></div><button class="btn primary" data-close>完成</button>',
+      onMount: function (card, close) {
+        M.dl(card.querySelector('#docDl'), opts.pairs);
+        M.opFlow(card.querySelector('#docFlow'), opts.steps || []);
+        if (opts.onMount) opts.onMount(card, close);
+      }
+    });
+  }
+
+  function openSupplier(s) {
+    openDoc({
+      title: s.name,
+      sub: s.code + ' · ' + s.category + ' · ' + s.level + ' 级供应商',
+      flowLabel: '供应商生命周期',
+      pairs: [
+        ['供应商编码', s.code], ['供应商名称', s.name], ['分类 / 编码', s.category],
+        ['供应商等级', s.level], ['联系人', s.contact], ['联系电话', s.phone],
+        ['资质状态', M.tag(s.qualified, supTone(s.qualified)), 'html'],
+        ['合作状态', M.tag(s.status, stTone(s.status)), 'html']
+      ],
+      steps: [
+        { no: 1, name: '准入申请', meta: '已完成', state: 'done' },
+        { no: 2, name: '资质审核', meta: s.qualified, state: s.qualified === '已审核' ? 'done' : 'active' },
+        { no: 3, name: '样品验证', meta: s.qualified === '已审核' ? '已通过' : '待验证', state: s.qualified === '已审核' ? 'done' : 'todo' },
+        { no: 4, name: '合格供应商', meta: s.status, state: s.status === '合作中' ? 'active' : 'todo' },
+        { no: 5, name: '年度复审', meta: '2026-12', state: 'todo' }
+      ],
+      footer: '<button class="btn" data-close>关闭</button><div class="spacer"></div><button class="btn primary" id="docAudit">供应商审核</button>',
+      onMount: function (card, close) {
+        card.querySelector('#docAudit').addEventListener('click', function () { close(); openSupplierAudit(s.code); });
+      }
+    });
+  }
+
+  function openPo(r) {
+    var receipts = P.receipts.filter(function (x) { return x.po === r.no && x.status === '已审核'; });
+    var invoices = P.invoices.filter(function (x) { return x.po === r.no; });
+    var settlements = P.settlements.filter(function (x) {
+      return invoices.some(function (i) { return i.no === x.invoice; });
+    });
+    var arrived = r.received > 0;
+    openDoc({
+      title: r.no,
+      sub: r.supplier + ' · ' + r.material + ' · 交期 ' + r.deliveryDate,
+      flowLabel: '采购订单流转',
+      pairs: [
+        ['订单号', r.no], ['供应商', r.supplier], ['物料', r.material],
+        ['采购数量', r.qty + ' 件'], ['订单金额', Number(r.amount).toFixed(1) + ' 万元'],
+        ['下单日期', r.orderDate], ['交货日期', r.deliveryDate],
+        ['已到货', r.received + ' / ' + r.qty],
+        ['订单状态', M.tag(r.status, stTone(r.status)), 'html']
+      ],
+      steps: [
+        { no: 1, name: '采购下单', meta: r.orderDate, state: 'done' },
+        { no: 2, name: '到货登记', meta: arrived ? '已到 ' + r.received : (r.status === '交付逾期' ? '交付逾期' : '待到货'), state: arrived ? 'done' : (r.status === '交付逾期' ? 'active' : 'todo') },
+        { no: 3, name: '检验入库', meta: receipts.length ? receipts[0].no : '待入库', state: receipts.length ? 'done' : (arrived ? 'active' : 'todo') },
+        { no: 4, name: '发票登记', meta: invoices.length ? invoices[0].no : '待开票', state: invoices.length ? 'done' : 'todo' },
+        { no: 5, name: '结算付款', meta: settlements.length ? settlements[0].no : '待结算', state: settlements.length ? (settlements[0].status === '已结算' ? 'done' : 'active') : 'todo' }
+      ],
+      footer: '<button class="btn" data-close>关闭</button><div class="spacer"></div>' +
+        '<a class="btn ghost" href="collab.html?tab=delivery&q=' + encodeURIComponent(r.material) + '">协同交付</a>' +
+        '<a class="btn ghost" href="inventory.html?tab=stock&q=' + encodeURIComponent(r.material) + '">库存台账</a>' +
+        '<button class="btn" id="docArrive">到货登记</button><button class="btn primary" data-close>完成</button>',
+      onMount: function (card, close) {
+        card.querySelector('#docArrive').addEventListener('click', function () { close(); openArrival(r.no); });
+      }
+    });
+  }
+
+  function openArrivalDetail(r) {
+    openDoc({
+      title: r.no,
+      sub: r.supplier + ' · ' + r.po,
+      flowLabel: '到货流转',
+      pairs: [
+        ['到货单号', r.no], ['采购订单', r.po], ['供应商', r.supplier],
+        ['到货日期', r.date], ['到货数量', r.qty + ' 件'],
+        ['合格数量', r.passed + ' 件'], ['拒收数量', r.rejected + ' 件'],
+        ['状态', M.tag(r.status, stTone(r.status)), 'html']
+      ],
+      steps: [
+        { no: 1, name: '到货登记', meta: r.date, state: 'done' },
+        { no: 2, name: '质量检验', meta: r.qty > 0 ? '已完成' : '未开始', state: r.qty > 0 ? 'done' : 'todo' },
+        { no: 3, name: '入库上架', meta: r.status === '已入库' ? '已完成' : r.status === '部分入库' ? '部分完成' : '待处理', state: r.status === '已入库' ? 'done' : r.status === '部分入库' ? 'active' : 'todo' },
+        { no: 4, name: '发票结算', meta: '待结算', state: 'todo' }
+      ],
+      note: r.rejected > 0 ? '本批到货拒收 <b>' + r.rejected + '</b> 件，已关联退货单，请采购与质量确认处理方式。' : ''
+    });
+  }
+
+  function openReceiptDetail(r) {
+    var audited = r.status === '已审核';
+    openDoc({
+      title: r.no,
+      sub: r.supplier + ' · ' + r.warehouse,
+      flowLabel: '采购入库流转',
+      pairs: [
+        ['入库单号', r.no], ['采购订单', r.po], ['供应商', r.supplier],
+        ['入库仓库', r.warehouse], ['入库数量', r.qty + ' 件'],
+        ['入库金额', Number(r.amount).toFixed(1) + ' 万元'], ['入库日期', r.date],
+        ['状态', M.tag(r.status, stTone(r.status)), 'html']
+      ],
+      steps: [
+        { no: 1, name: '入库单生成', meta: r.date, state: 'done' },
+        { no: 2, name: '单据审核', meta: audited ? '已审核' : '待审核', state: audited ? 'done' : 'active' },
+        { no: 3, name: '存货记账', meta: audited ? '已记账' : '待记账', state: audited ? 'done' : 'todo' },
+        { no: 4, name: 'U8C 凭证', meta: audited ? '已同步' : '待推送', state: audited ? 'done' : 'todo' }
+      ]
+    });
+  }
+
+  function openReturnDetail(r) {
+    var returned = r.status === '已退货' || r.status === '已退款';
+    openDoc({
+      title: r.no,
+      sub: r.supplier + ' · ' + r.material,
+      flowLabel: '退货流转',
+      pairs: [
+        ['退货单号', r.no], ['采购订单', r.po], ['供应商', r.supplier],
+        ['物料', r.material], ['退货数量', r.qty + ' 件'], ['退货原因', r.reason],
+        ['退货金额', Number(r.amount).toFixed(2) + ' 万元'],
+        ['状态', M.tag(r.status, stTone(r.status)), 'html']
+      ],
+      steps: [
+        { no: 1, name: '退货申请', meta: r.no, state: 'done' },
+        { no: 2, name: '质量确认', meta: r.reason, state: returned ? 'done' : 'active' },
+        { no: 3, name: '退回供应商', meta: returned ? '已完成' : '待退回', state: returned ? 'done' : 'todo' },
+        { no: 4, name: '退款 / 补货', meta: r.status === '已退款' ? '已退款' : '待处理', state: r.status === '已退款' ? 'done' : 'todo' }
+      ],
+      note: r.status === '待退货' ? '该退货单尚未完成退回，请仓储按供应商退货地址安排发运，并在协同门户同步物流单号。' : ''
+    });
+  }
+
+  function openInvoiceDetail(r) {
+    var settled = r.status === '已结算';
+    openDoc({
+      title: r.no,
+      sub: r.supplier + ' · ' + r.po,
+      flowLabel: '采购发票流转',
+      pairs: [
+        ['发票号', r.no], ['采购订单', r.po], ['供应商', r.supplier],
+        ['发票金额', Number(r.amount).toFixed(1) + ' 万元'], ['税额', Number(r.tax).toFixed(2) + ' 万元'],
+        ['发票类型', r.type], ['开票日期', r.date],
+        ['状态', M.tag(r.status, stTone(r.status)), 'html']
+      ],
+      steps: [
+        { no: 1, name: '发票登记', meta: r.date, state: 'done' },
+        { no: 2, name: '三单匹配', meta: '订单 / 到货 / 发票', state: 'done' },
+        { no: 3, name: '结算', meta: settled ? '已结算' : '待结算', state: settled ? 'done' : 'active' },
+        { no: 4, name: '付款核销', meta: settled ? '已核销' : '待付款', state: settled ? 'done' : 'todo' }
+      ]
+    });
+  }
+
+  function openSettlementDetail(r) {
+    var settled = r.status === '已结算';
+    openDoc({
+      title: r.no,
+      sub: r.supplier + ' · 发票 ' + r.invoice,
+      flowLabel: '结算付款流转',
+      pairs: [
+        ['结算单号', r.no], ['供应商', r.supplier], ['关联发票', r.invoice],
+        ['结算金额', Number(r.amount).toFixed(1) + ' 万元'], ['结算日期', r.date],
+        ['状态', M.tag(r.status, stTone(r.status)), 'html']
+      ],
+      steps: [
+        { no: 1, name: '结算单生成', meta: r.date, state: 'done' },
+        { no: 2, name: '财务审核', meta: settled ? '已审核' : '待审核', state: settled ? 'done' : 'active' },
+        { no: 3, name: '付款执行', meta: settled ? '已付款' : '待付款', state: settled ? 'done' : 'todo' },
+        { no: 4, name: '应付核销', meta: settled ? '已核销' : '待核销', state: settled ? 'done' : 'todo' }
+      ]
+    });
+  }
+
+  function openEstimateDetail(r) {
+    var reversed = r.status === '已回冲';
+    var pendingReverse = r.status === '待回冲';
+    openDoc({
+      title: r.no,
+      sub: r.supplier + ' · ' + r.material,
+      flowLabel: '暂估与回冲',
+      pairs: [
+        ['暂估单号', r.no], ['采购订单', r.po], ['供应商', r.supplier],
+        ['物料', r.material], ['数量', r.qty + ' 件'],
+        ['暂估金额', Number(r.amount).toFixed(1) + ' 万元'],
+        ['会计期间', r.period], ['状态', M.tag(r.status, stTone(r.status)), 'html']
+      ],
+      steps: [
+        { no: 1, name: '入库暂估', meta: r.period, state: 'done' },
+        { no: 2, name: '月末暂估', meta: r.status === '暂估中' ? '处理中' : '已完成', state: r.status === '暂估中' ? 'active' : 'done' },
+        { no: 3, name: '发票到达', meta: pendingReverse ? '待回冲' : reversed ? '已到达' : '待到达', state: reversed ? 'done' : pendingReverse ? 'active' : 'todo' },
+        { no: 4, name: '暂估回冲', meta: reversed ? '已回冲' : '待回冲', state: reversed ? 'done' : 'todo' }
+      ]
+    });
+  }
+
+  /* ---------- 新建采购订单 ---------- */
+  function openNewPo() {
+    var supOpts = P.suppliers.map(function (s) {
+      return '<option value="' + M.esc(s.code) + '">' + M.esc(s.name) + '</option>';
+    }).join('');
+    var matOpts = DB.inventory.stock.slice(0, 9).map(function (s) {
+      return '<option>' + M.esc(s.name) + '</option>';
+    }).join('');
+
+    M.modal({
+      title: '新建采购订单',
+      wide: true,
+      body: '<div class="form-grid">' +
+        '<div class="field full"><span class="label">供应商</span><select class="select" id="npSup">' + supOpts + '</select></div>' +
+        '<div class="field"><span class="label">物料</span><select class="select" id="npMat">' + matOpts + '</select></div>' +
+        '<div class="field"><span class="label">数量</span><input class="input" id="npQty" type="number" value="2000" min="1"></div>' +
+        '<div class="field"><span class="label">单价（元）</span><input class="input" id="npPrice" type="number" value="21.6" min="0" step="0.1"></div>' +
+        '<div class="field"><span class="label">金额（元）</span><input class="input" id="npAmount" value="43,200.00" readonly></div>' +
+        '<div class="field"><span class="label">交期</span><input class="input" id="npDate" type="date" value="2026-11-05"></div>' +
+        '<div class="field"><span class="label">下单日期</span><input class="input" value="2026-10-25" readonly></div>' +
+        '<div class="field"><span class="label">物料分类</span><input class="input" value="物料 02 · 直接材料" readonly></div>' +
+        '<div class="field full"><span class="label">备注</span><textarea class="textarea" id="npNote" placeholder="可选：交付要求 / 包装标识 / 质检标准"></textarea></div>' +
+        '</div><div class="note" style="margin-top:12px">提交后生成采购订单并推送供应商协同门户确认交期；金额按数量 × 单价计算，单位：元。</div>',
+      footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" id="npSubmit">提交订单</button>',
+      onMount: function (card, close) {
+        var qty = card.querySelector('#npQty');
+        var price = card.querySelector('#npPrice');
+        var amount = card.querySelector('#npAmount');
+        function calc() {
+          var v = (Number(qty.value) || 0) * (Number(price.value) || 0);
+          amount.value = v.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        qty.addEventListener('input', calc);
+        price.addEventListener('input', calc);
+        calc();
+        card.querySelector('#npSubmit').addEventListener('click', function () {
+          var n = Number(qty.value) || 0;
+          var p = Number(price.value) || 0;
+          if (!n) { M.invalid(qty, '请输入有效的采购数量'); return; }
+          if (!p) { M.invalid(price, '请输入有效的采购单价'); return; }
+          var sup = P.suppliers.filter(function (s) { return s.code === card.querySelector('#npSup').value; })[0];
+          var row = {
+            no: 'PO-261025-005',
+            supplier: sup ? sup.name : '—',
+            material: card.querySelector('#npMat').value,
+            qty: n,
+            amount: Number((n * p / 10000).toFixed(2)),
+            orderDate: '2026-10-25',
+            deliveryDate: card.querySelector('#npDate').value || '2026-11-05',
+            received: 0,
+            status: '已下单'
+          };
+          var exists = poRows.some(function (x) { return x.no === row.no; });
+          if (exists) {
+            close();
+            M.toast('采购订单 ' + row.no + ' 已存在，请勿重复创建', 'warn');
+            return;
+          }
+          poRows.unshift(row);
+          MES.save();
+          renderPo();
+          close();
+          M.toast('采购订单已创建：PO-261025-005', 'ok', {
+            label: '撤销',
+            onClick: function () {
+              var i = P.orders.indexOf(row);
+              if (i > -1) P.orders.splice(i, 1);
+              MES.save();
+              renderPo();
+              M.toast('已撤销采购订单：PO-261025-005', 'ok');
+            }
+          });
+        });
+      }
+    });
+  }
+
+  /* ---------- 供应商审核 ---------- */
+  function openSupplierAudit(code) {
+    var current = P.suppliers.filter(function (s) { return s.code === code; })[0] ||
+      P.suppliers.filter(function (s) { return s.qualified !== '已审核'; })[0] ||
+      P.suppliers[0];
+    if (!current) { M.toast('暂无可审核的供应商', 'warn'); return; }
+
+    var opts = P.suppliers.map(function (s) {
+      return '<option value="' + M.esc(s.code) + '"' + (s.code === current.code ? ' selected' : '') + '>' +
+        M.esc(s.name) + ' · ' + M.esc(s.qualified) + '</option>';
+    }).join('');
+
+    M.modal({
+      title: '供应商审核',
+      body: '<div class="form-grid">' +
+        '<div class="field full"><span class="label">供应商</span><select class="select" id="auSup">' + opts + '</select></div>' +
+        '<div class="field"><span class="label">审核结果</span><select class="select" id="auResult"><option value="通过">通过</option><option value="驳回">驳回</option></select></div>' +
+        '<div class="field"><span class="label">审核人</span><input class="input" value="张明 · 采购部" readonly></div>' +
+        '</div><div class="divider-dash"></div><div id="auInfo"></div>' +
+        '<div class="note" style="margin-top:12px">审核通过后供应商进入「合作中」并可用于新建采购订单；驳回将标记为「停用」，需重新提交资质。</div>',
+      footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" id="auSubmit">提交审核</button>',
+      onMount: function (card, close) {
+        var sel = card.querySelector('#auSup');
+        var info = card.querySelector('#auInfo');
+        function renderInfo() {
+          var s = P.suppliers.filter(function (x) { return x.code === sel.value; })[0] || current;
+          M.dl(info, [
+            ['供应商编码', s.code],
+            ['分类编码', s.category],
+            ['供应商名称', s.name],
+            ['供应商等级', s.level],
+            ['资质状态', M.tag(s.qualified, supTone(s.qualified)), 'html'],
+            ['合作状态', M.tag(s.status, stTone(s.status)), 'html']
+          ]);
+        }
+        sel.addEventListener('change', renderInfo);
+        renderInfo();
+        card.querySelector('#auSubmit').addEventListener('click', function () {
+          var s = P.suppliers.filter(function (x) { return x.code === sel.value; })[0];
+          if (!s) return;
+          var pass = card.querySelector('#auResult').value === '通过';
+          s.qualified = pass ? '已审核' : '已驳回';
+          s.status = pass ? '合作中' : '停用';
+          MES.save();
+          renderSup();
+          close();
+          M.toast('供应商「' + s.name + '」审核' + (pass ? '通过' : '驳回') + '（演示）', pass ? 'ok' : 'warn');
+        });
+      }
+    });
+  }
+
+  /* ---------- 到货登记 ---------- */
+  function openArrival(preset) {
+    var list = P.orders.filter(function (r) { return r.status !== '已到货'; });
+    if (!list.length) { M.toast('暂无待登记到货的采购订单', 'warn'); return; }
+    var chosen = list.filter(function (r) { return r.no === preset; })[0] || list[0];
+    var opts = list.map(function (r) {
+      return '<option value="' + M.esc(r.no) + '"' + (r.no === chosen.no ? ' selected' : '') + '>' +
+        M.esc(r.no + ' · ' + r.supplier + ' · ' + r.material) + '</option>';
+    }).join('');
+
+    M.modal({
+      title: '到货登记',
+      body: '<div class="form-grid">' +
+        '<div class="field full"><span class="label">采购订单</span><select class="select" id="arPo">' + opts + '</select></div>' +
+        '<div class="field"><span class="label">到货数量</span><input class="input" id="arQty" type="number" value="' + Math.max(1, chosen.qty - chosen.received) + '" min="1"></div>' +
+        '<div class="field"><span class="label">到货日期</span><input class="input" id="arDate" type="date" value="2026-10-25"></div>' +
+        '<div class="field"><span class="label">合格数量</span><input class="input" id="arOk" type="number" value="' + Math.max(1, chosen.qty - chosen.received) + '" min="0"></div>' +
+        '<div class="field"><span class="label">拒收数量</span><input class="input" id="arNg" type="number" value="0" min="0"></div>' +
+        '<div class="field full"><span class="label">备注</span><input class="input" id="arNote" placeholder="可选：送货单号 / 批次 / 检验说明"></div>' +
+        '</div><div class="note" style="margin-top:12px">到货单登记后进入质检与入库审核，合格数量生成采购入库单，拒收数量自动进入退货流程。</div>',
+      footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" id="arSubmit">提交到货</button>',
+      onMount: function (card, close) {
+        var qty = card.querySelector('#arQty');
+        var ok = card.querySelector('#arOk');
+        var ng = card.querySelector('#arNg');
+        qty.addEventListener('input', function () {
+          var n = Number(qty.value) || 0;
+          var bad = Math.min(Number(ng.value) || 0, n);
+          ng.value = bad;
+          ok.value = Math.max(0, n - bad);
+        });
+        ng.addEventListener('input', function () {
+          var n = Number(qty.value) || 0;
+          var bad = Math.min(Number(ng.value) || 0, n);
+          ng.value = bad;
+          ok.value = Math.max(0, n - bad);
+        });
+        card.querySelector('#arSubmit').addEventListener('click', function () {
+          var n = Number(qty.value) || 0;
+          if (!n) { M.toast('请填写到货数量', 'warn'); return; }
+          var okQty = Number(ok.value) || 0;
+          var ngQty = Number(ng.value) || 0;
+          var dt = card.querySelector('#arDate').value || '2026-10-25';
+          var poNo = card.querySelector('#arPo').value;
+          var order = P.orders.filter(function (x) { return x.no === poNo; })[0];
+          if (P.arrivals.some(function (x) { return x.no === 'DH-261025-004'; })) {
+            close();
+            M.toast('本次到货已登记，请勿重复提交', 'warn');
+            return;
+          }
+          if (order) {
+            order.received = Math.min(order.qty, (order.received || 0) + n);
+            order.status = order.received >= order.qty ? '已到货' : '部分到货';
+            P.arrivals.unshift({
+              no: 'DH-261025-004', po: order.no, supplier: order.supplier, date: dt,
+              qty: n, passed: okQty, rejected: ngQty,
+              status: order.received >= order.qty ? '已入库' : '部分入库'
+            });
+            var unit = order.qty ? order.amount / order.qty : 0;
+            P.receipts.unshift({
+              no: 'RK-261025-013', po: order.no, supplier: order.supplier, warehouse: '原料库 A',
+              qty: okQty, amount: Number((unit * okQty).toFixed(1)), date: dt, status: '待审核'
+            });
+            var inv = ((DB.inventory && DB.inventory.stock) || []).filter(function (s) { return s.name === order.material; })[0];
+            if (inv) {
+              inv.qty += okQty;
+              inv.status = inv.qty >= inv.safe ? '正常' : '预警';
+              if (DB.inventory.inbound) {
+                DB.inventory.inbound.unshift({
+                  no: 'RK-261025-013', type: '采购入库', source: 'DH-261025-004 / ' + order.supplier,
+                  warehouse: '原料库 A', qty: okQty, amount: Number((unit * okQty).toFixed(1)), date: dt, status: '待审核'
+                });
+              }
+            }
+            MES.save();
+            renderPo();
+            arrTable.refresh(P.arrivals);
+            rcpTable.refresh(P.receipts);
+          }
+          close();
+          M.toast('到货单已登记，合格 ' + okQty + ' 件已生成入库单并同步库存', 'ok', {
+            label: '查看库存',
+            onClick: function () { MES.go('inventory.html', { tab: 'stock', q: order ? order.material : '' }); }
+          });
+        });
+      }
+    });
+  }
+
+  /* 快速新建：?new=1 */
+  if (MES.query('new') === '1') setTimeout(function () { openNewPo(); MES.clearQuery(); }, 160);
+});
+</script>
+</body>
+</html>

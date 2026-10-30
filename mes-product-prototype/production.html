@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>生产执行 · 制造与供应链协同平台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="production">
+
+<aside class="app-nav" id="appNav"></aside>
+<div class="app-body">
+  <header class="app-topbar" id="appTopbar"></header>
+
+  <main class="app-content">
+    <div class="page-head">
+      <div>
+        <div class="page-title">生产执行</div>
+        <div class="page-sub">工单 · 工序 · 报工 · 停机 · WIP 实时跟踪（演示数据 2026-10-25 白班）</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="page-actions">
+        <button class="btn" id="btnPrint"></button>
+        <button class="btn primary" id="btnReport"></button>
+      </div>
+    </div>
+
+    <div id="kpiGrid" class="grid-4 stagger mb-16"></div>
+
+    <section class="card mb-16">
+      <div class="card-head">
+        <div class="card-title" id="stnTitle">工位链 · 装配一线</div>
+        <span class="card-sub">节拍达成率 / 工位在制 / 设备状态</span>
+        <div class="spacer"></div>
+        <div class="btn-group" id="lineSeg">
+          <button class="active" data-line="AS-01">装配一线</button>
+          <button data-line="AS-02">装配二线</button>
+          <button data-line="MC-01">机加一线</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="stationChain"></div>
+        <div class="divider"></div>
+        <div class="legend">
+          <span class="lg"><span class="dot ok"></span>节拍达标（≥ 95%）</span>
+          <span class="lg"><span class="dot warn"></span>节拍偏低（&lt; 95%）</span>
+          <span class="lg"><span class="dot danger"></span>瓶颈工位 / 停机</span>
+          <span class="lg"><span class="dot mute"></span>数据来源：设备采集 + 人工报工</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid-2-1 mb-16">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="woTitle">工单台账</div>
+          <div class="spacer"></div>
+          <div class="btn-group" id="statusSeg">
+            <button class="active" data-status="全部">全部</button>
+            <button data-status="生产中">生产中</button>
+            <button data-status="待料">待料</button>
+            <button data-status="已排程">已排程</button>
+            <button data-status="已完成">已完成</button>
+          </div>
+        </div>
+        <div class="card-body tight" id="woTable"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="dtTitle">当班停机</div>
+          <div class="spacer"></div>
+          <span class="tag warn" id="dtTotal">46.5 min</span>
+        </div>
+        <div class="card-body">
+          <div id="dtBars" class="mb-12"></div>
+          <div class="divider"></div>
+          <div id="dtTimeline"></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid-2 mb-16">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="rpTitle">实时报工记录</div>
+          <div class="spacer"></div>
+          <span class="tag ok">自动采集 + 人工</span>
+        </div>
+        <div class="card-body tight" id="reportTable"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="hrTitle">当班分时产出</div>
+          <span class="card-sub">单位：台</span>
+          <div class="spacer"></div>
+          <span class="tag info">节拍 42.5s</span>
+        </div>
+        <div class="card-body">
+          <div id="hourBars"></div>
+          <div class="divider"></div>
+          <div id="shiftStrip"></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="card-head">
+        <div class="card-title" id="dtrTitle">停机与异常明细</div>
+        <div class="spacer"></div>
+        <span class="tag outline">按影响时长排序</span>
+      </div>
+      <div class="card-body tight" id="dtrTable"></div>
+    </section>
+  </main>
+</div>
+
+<script src="assets/mock.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var M = MESUI;
+  var P = DB.production;
+
+  document.getElementById('btnPrint').innerHTML = M.icon('printer') + '打印流转卡';
+  document.getElementById('btnReport').innerHTML = M.icon('plus') + '生产报工';
+  document.getElementById('stnTitle').innerHTML = M.icon('gitBranch') + '工位链 · 装配一线';
+  document.getElementById('woTitle').innerHTML = M.icon('clipboard') + '工单台账';
+  document.getElementById('dtTitle').innerHTML = M.icon('alert') + '当班停机';
+  document.getElementById('rpTitle').innerHTML = M.icon('activity') + '实时报工记录';
+  document.getElementById('hrTitle').innerHTML = M.icon('chart') + '当班分时产出';
+  document.getElementById('dtrTitle').innerHTML = M.icon('clock') + '停机与异常明细';
+
+  M.kpi('#kpiGrid', P.kpis);
+
+  /* 工位链：按产线切换 */
+  var CHAINS = {
+    'AS-01': P.stations,
+    'AS-02': [
+      { title: 'OP10 预装', meta: '节拍 40s / 标准 40s', value: 92, unit: '%', tone: '', valueTone: '' },
+      { title: 'OP20 定子装配', meta: '节拍 43s / 标准 40s', value: 88, unit: '%', tone: 'warn', valueTone: 'low' },
+      { title: 'OP30 转子压装', meta: '节拍 42s / 标准 40s', value: 90, unit: '%', tone: '', valueTone: '' },
+      { title: 'OP40 端盖装配', meta: '节拍 46s / 标准 40s', value: 81, unit: '%', tone: 'warn', valueTone: 'low' },
+      { title: 'OP50 拧紧', meta: '扭矩 18~22N·m', value: 72, unit: '%', tone: 'warn', valueTone: 'low' },
+      { title: 'OP60 性能测试', meta: '测试台 T3-T4', value: 89, unit: '%', tone: '', valueTone: '' },
+      { title: 'OP70 外观检验', meta: '全检 · 目视', value: 94, unit: '%', tone: 'ok', valueTone: 'ok' },
+      { title: 'OP80 包装', meta: '打包 + 贴标', value: 90, unit: '%', tone: '', valueTone: '' }
+    ],
+    'MC-01': [
+      { title: 'OP10 下料', meta: '节拍 38s / 标准 38s', value: 100, unit: '%', tone: 'ok', valueTone: 'ok' },
+      { title: 'OP20 粗车', meta: '节拍 40s / 标准 40s', value: 98, unit: '%', tone: '', valueTone: '' },
+      { title: 'OP30 转子压装', meta: '设备 CNC-07', value: 96, unit: '%', tone: '', valueTone: '' },
+      { title: 'OP40 精磨', meta: '节拍 42s / 标准 40s', value: 91, unit: '%', tone: 'warn', valueTone: 'low' },
+      { title: 'OP50 清洗', meta: '节拍 39s / 标准 40s', value: 99, unit: '%', tone: 'ok', valueTone: 'ok' },
+      { title: 'OP60 动平衡', meta: '节拍 41s / 标准 40s', value: 96, unit: '%', tone: '', valueTone: '' },
+      { title: 'OP70 终检', meta: '抽检 10%', value: 97, unit: '%', tone: 'ok', valueTone: 'ok' }
+    ]
+  };
+  function renderChain(line) {
+    M.stationChain('#stationChain', CHAINS[line] || CHAINS['AS-01']);
+    document.getElementById('stnTitle').innerHTML = M.icon('gitBranch') + '工位链 · ' + (line === 'AS-01' ? '装配一线' : line === 'AS-02' ? '装配二线' : '机加一线');
+  }
+  renderChain('AS-01');
+  M.bindSeg('#lineSeg', function (v) { renderChain(v); });
+
+  /* 工单表 */
+  var woCols = [
+    { key: 'no', label: '工单号', cls: 'mono' },
+    { key: 'product', label: '产品' },
+    { key: 'plan', label: '计划', cls: 'num' },
+    { key: 'done', label: '完成', cls: 'num' },
+    { key: 'progress', label: '进度', sortable: false, formatter: function (r) {
+      var p = Math.round(r.done / r.plan * 100);
+      return M.progress(p, M.pctTone(p)) + '<span class="mono hint">' + p + '%</span>';
+    } },
+    { key: 'line', label: '产线', formatter: function (r) { return '<span class="tag outline">' + r.line + '</span>'; } },
+    { key: 'priority', label: '优先级', cls: 'num' },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } },
+    { key: 'due', label: '计划完成', cls: 'mono' }
+  ];
+  var woTable = null;
+  function renderWo(status) {
+    var rows = status === '全部' ? P.workOrders : P.workOrders.filter(function (r) { return r.status === status; });
+    woTable = M.table({
+      mount: '#woTable', columns: woCols, rows: rows, pageSize: 7, exportName: '工单台账',
+      rowClass: function (r) { return r.status === '待料' ? 'row-warn' : r.status === '预警' ? 'row-danger' : ''; },
+      onRowClick: function (r) { openWo(r); }
+    });
+  }
+  renderWo('全部');
+  M.bindSeg('#statusSeg', function (v) { renderWo(v); });
+
+  function openWo(r) {
+    M.drawer({
+      title: r.no,
+      sub: r.product + ' · ' + r.line + ' · ' + r.owner,
+      body: '<div id="woDl" class="mb-16"></div>' +
+        '<div class="divider"></div><div class="hint mb-8">工序进度</div><div id="woOpFlow"></div>' +
+        '<div class="divider"></div><div class="hint mb-8">最近报工</div><div id="woTl"></div>',
+      footer: '<button class="btn" data-close>关闭</button><div class="spacer"></div><button class="btn primary" id="drawerReport">报工</button>',
+      onMount: function (card, close) {
+        M.dl(card.querySelector('#woDl'), [
+          ['产品', r.product], ['计划 / 完成', r.plan + ' / ' + r.done],
+          ['产线', r.line], ['优先级', r.priority],
+          ['状态', M.tag(r.status), 'html'], ['计划完成', r.due]
+        ]);
+        M.opFlow(card.querySelector('#woOpFlow'), [
+          { no: 1, name: '机加', meta: '已完成', state: 'done' },
+          { no: 2, name: '装配', meta: '进行中', state: 'active' },
+          { no: 3, name: '测试', meta: '待开始', state: 'todo' },
+          { no: 4, name: '包装', meta: '待开始', state: 'todo' }
+        ]);
+        M.timeline(card.querySelector('#woTl'), [
+          { tone: 'ok', title: 'OP50 拧紧 · 报工 18 台', time: '11:36', body: '合格 17 · 不良 1（扭矩超差）· 陈刚' },
+          { tone: 'ok', title: 'OP40 端盖装配 · 报工 19 台', time: '10:32', body: '合格 18 · 不良 1（间隙超差）· 陈刚' }
+        ]);
+        card.querySelector('#drawerReport').addEventListener('click', function () { close(); openReport(r.no); });
+      }
+    });
+  }
+
+  /* 报工弹窗 */
+  function openReport(presetOrder) {
+    var options = P.workOrders.filter(function (r) { return r.status === '生产中' || r.status === '待料'; });
+    var body = '<div class="form-grid">' +
+      '<div class="field full"><span class="label">工单</span><select class="select" id="rpOrder">' +
+        options.map(function (r) { return '<option value="' + r.no + '"' + (r.no === presetOrder ? ' selected' : '') + '>' + r.no + ' · ' + r.product + '</option>'; }).join('') +
+      '</select></div>' +
+      '<div class="field"><span class="label">工序</span><select class="select" id="rpOp">' +
+        ['OP30 转子压装', 'OP40 端盖装配', 'OP50 拧紧', 'OP60 性能测试', 'OP80 包装'].map(function (x) { return '<option>' + x + '</option>'; }).join('') +
+      '</select></div>' +
+      '<div class="field"><span class="label">报工数量</span><input class="input" id="rpQty" type="number" value="20" min="1"></div>' +
+      '<div class="field"><span class="label">合格数量</span><input class="input" id="rpOk" type="number" value="19" min="0"></div>' +
+      '<div class="field"><span class="label">不良数量</span><input class="input" id="rpNg" type="number" value="1" min="0"></div>' +
+      '<div class="field full"><span class="label">备注</span><textarea class="textarea" id="rpNote" placeholder="可选：异常描述 / 设备状态 / 批次说明"></textarea></div>' +
+    '</div><div class="note" style="margin-top:12px">报工后自动更新工单进度、WIP 与追溯履历；不良数量 &gt; 0 时同步生成质量待处理项。</div>';
+
+    M.modal({
+      title: '生产报工',
+      wide: true,
+      body: body,
+      footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" id="rpSubmit">提交报工</button>',
+      onMount: function (card, close) {
+        var qty = card.querySelector('#rpQty');
+        var ok = card.querySelector('#rpOk');
+        var ng = card.querySelector('#rpNg');
+        qty.addEventListener('input', function () {
+          var n = Number(qty.value) || 0;
+          var bad = Math.min(Number(ng.value) || 0, n);
+          ng.value = bad;
+          ok.value = Math.max(0, n - bad);
+        });
+        card.querySelector('#rpSubmit').addEventListener('click', function () {
+          var n = Number(qty.value) || 0;
+          if (!n) { M.invalid(qty, '请输入报工数量'); return; }
+          var orderNo = card.querySelector('#rpOrder').value;
+          var op = card.querySelector('#rpOp').value;
+          var okN = Number(ok.value) || 0;
+          var ngN = Number(ng.value) || 0;
+          API.submitProductionReport({ order: orderNo, qty: n }).then(function () {
+            var wo = P.workOrders.filter(function (x) { return x.no === orderNo; })[0];
+            if (wo) {
+              wo.done = Math.min(wo.plan, (wo.done || 0) + okN);
+              if (wo.done >= wo.plan) wo.status = '已完成';
+            }
+            P.reports.unshift({
+              time: M.now().slice(0, 5), order: orderNo, op: op,
+              qty: n, ok: okN, ng: ngN, worker: DB.user.name
+            });
+            if (ngN > 0 && DB.quality && DB.quality.issues) {
+              DB.quality.issues.unshift({
+                no: 'QI-261025-' + (7 + Math.floor(Math.random() * 80)), time: M.now().slice(0, 5),
+                source: '生产报工', product: wo ? wo.product : '—', defect: op + ' 不良 ' + ngN + ' 台',
+                level: '一般', owner: wo ? wo.owner : '生产组', status: '待处理'
+              });
+            }
+            MES.save();
+            reportTable.refresh(P.reports);
+            var active = document.querySelector('#statusSeg .active');
+            renderWo(active ? active.getAttribute('data-status') : '全部');
+            close();
+            M.toast('报工成功：' + n + ' 台已提交，工单进度与质量记录已同步', 'ok', {
+              label: ngN > 0 ? '查看质量问题' : '查看工单',
+              onClick: function () {
+                if (ngN > 0) MES.go('quality.html', { q: '生产报工', mount: '#issueTable' });
+                else MES.go('production.html', { q: orderNo, mount: '#woTable' });
+              }
+            });
+          });
+        });
+      }
+    });
+  }
+  document.getElementById('btnReport').addEventListener('click', function () { openReport(); });
+  document.getElementById('btnPrint').addEventListener('click', function () {
+    M.modal({
+      title: '打印流转卡',
+      body: '<div class="form-grid"><div class="field full"><span class="label">工单</span><select class="select">' +
+        P.workOrders.slice(0, 6).map(function (r) { return '<option>' + r.no + ' · ' + r.product + '</option>'; }).join('') +
+        '</select></div><div class="field"><span class="label">模板</span><select class="select"><option>标准流转卡</option><option>关键件追溯卡</option></select></div>' +
+        '<div class="field"><span class="label">份数</span><input class="input" type="number" value="1" min="1"></div></div>',
+      footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" data-close onclick="MESUI.toast(\'打印任务已下发至 PK-01 打印机\',\'ok\')">打印</button>'
+    });
+  });
+
+  /* 停机 */
+  var dtTotal = P.downtime.reduce(function (s, x) { return s + x.duration; }, 0);
+  document.getElementById('dtTotal').textContent = dtTotal.toFixed(1) + ' min';
+  M.bars('#dtBars', [
+    { name: '设备故障', v: 34, tone: 'danger' },
+    { name: '物料等待', v: 18.5, tone: 'accent' },
+    { name: '计划换刀', v: 9, tone: '' },
+    { name: '换型调整', v: 4.5, tone: '' },
+    { name: '人员', v: 3.2, tone: '' }
+  ], { unit: ' min', max: 40 });
+  M.timeline('#dtTimeline', [
+    { tone: 'danger', title: 'SCR-05 扭矩传感器故障', time: '09:42', body: '停机 28min · 设备组已更换传感器并恢复' },
+    { tone: 'warn', title: 'AS-02 定子铁芯待料', time: '10:18', body: '已停机 18.5min · 预计 14:30 到货' },
+    { tone: 'ok', title: 'PKG-01 标签纸卡纸', time: '09:05', body: '停机 6min · 已恢复' }
+  ]);
+
+  /* 报工记录 */
+  var reportRows = P.reports;
+  var rpCols = [
+    { key: 'time', label: '时间', cls: 'mono' },
+    { key: 'order', label: '工单号', cls: 'mono' },
+    { key: 'op', label: '工序' },
+    { key: 'qty', label: '报工', cls: 'num' },
+    { key: 'ok', label: '合格', cls: 'num' },
+    { key: 'ng', label: '不良', cls: 'num' },
+    { key: 'worker', label: '报工人' }
+  ];
+  var reportTable = M.table({ mount: '#reportTable', columns: rpCols, rows: reportRows, pageSize: 7, search: false, exportName: '报工记录' });
+
+  /* 分时产出 */
+  M.vbars('#hourBars', P.hourly);
+  M.statStrip('#shiftStrip', [
+    { k: '白班目标', v: '1,400', unit: '台' },
+    { k: '已完成', v: '1,284', unit: '台' },
+    { k: '剩余', v: '116', unit: '台', color: 'var(--warning)' },
+    { k: '剩余工时', v: '6.5', unit: 'h' }
+  ]);
+
+  /* 停机明细 */
+  var dtCols = [
+    { key: 'eq', label: '设备 / 工位' },
+    { key: 'start', label: '开始', cls: 'mono' },
+    { key: 'duration', label: '时长(min)', cls: 'num' },
+    { key: 'reason', label: '原因' },
+    { key: 'type', label: '类型', formatter: function (r) { return '<span class="tag outline">' + r.type + '</span>'; } },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } }
+  ];
+  M.table({ mount: '#dtrTable', columns: dtCols, rows: P.downtime.slice().sort(function (a, b) { return b.duration - a.duration; }), pageSize: 6, exportName: '停机明细' });
+
+  /* 快速新建：?new=1 */
+  if (MES.query('new') === '1') setTimeout(function () { openReport(); MES.clearQuery(); }, 160);
+});
+</script>
+</body>
+</html>

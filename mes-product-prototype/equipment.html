@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>设备管理 · 制造与供应链协同平台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="equipment">
+
+<aside class="app-nav" id="appNav"></aside>
+<div class="app-body">
+  <header class="app-topbar" id="appTopbar"></header>
+
+  <main class="app-content">
+    <div class="page-head">
+      <div>
+        <div class="page-title">设备管理</div>
+        <div class="page-sub">状态 · OEE · 报警 · 点检 · 维护</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="page-actions">
+        <button class="btn" id="btnExportEquipment"></button>
+        <button class="btn primary" id="btnCommand"></button>
+      </div>
+    </div>
+
+    <div id="kpiGrid" class="grid-4 stagger mb-16"></div>
+
+    <div class="grid-2-1 mb-16">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="oeeTitle"></div>
+          <span class="card-sub">近 7 日 OEE 从 79.2% 提升至 82.6%</span>
+          <div class="spacer"></div>
+          <span class="tag ok">目标 ≥ 80%</span>
+        </div>
+        <div class="card-body">
+          <div id="oeeSpark"></div>
+          <div class="chart-axis" id="oeeAxis"></div>
+          <div class="divider"></div>
+          <div id="oeeStrip"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="alarmTitle"></div>
+          <div class="spacer"></div>
+          <span class="tag danger">严重 1 · 一般 2</span>
+        </div>
+        <div class="card-body">
+          <div id="alarmTimeline"></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="card-head">
+        <div class="card-title" id="eqTitle"></div>
+        <span class="card-sub">状态 / 报警 / 点检三类记录统一管理</span>
+        <div class="spacer"></div>
+        <span class="tag outline" id="eqCount"></span>
+      </div>
+      <div class="card-body tight">
+        <div class="tabs" data-tabs id="eqTabs" style="padding:0 14px">
+          <button class="tab active" data-tab="list">设备台账</button>
+          <button class="tab" data-tab="alarm">报警记录</button>
+          <button class="tab" data-tab="check">点检记录</button>
+        </div>
+        <div class="tab-panel" data-panel="list"><div id="eqTable"></div></div>
+        <div class="tab-panel hidden" data-panel="alarm"><div id="alarmTable"></div></div>
+        <div class="tab-panel hidden" data-panel="check"><div id="checkTable"></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="assets/mock.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var M = MESUI;
+  var E = DB.equipment;
+
+  document.getElementById('btnExportEquipment').innerHTML = M.icon('download') + '导出设备台账';
+  document.getElementById('btnCommand').innerHTML = M.icon('play') + '下发设备指令';
+
+  document.getElementById('oeeTitle').innerHTML = M.icon('trend') + 'OEE 近 7 日趋势';
+  document.getElementById('alarmTitle').innerHTML = M.icon('bell') + '报警动态';
+  document.getElementById('eqTitle').innerHTML = M.icon('cpu') + '设备台账';
+
+  M.kpi('#kpiGrid', E.kpis, 4);
+
+  /* OEE 趋势 */
+  var oeeValues = E.oeeTrend.map(function (x) { return x.v; });
+  M.sparkline('#oeeSpark', oeeValues, 'ok');
+  document.getElementById('oeeAxis').innerHTML = E.oeeTrend.map(function (x) {
+    return '<span>' + M.esc(x.d) + '</span>';
+  }).join('');
+  M.statStrip('#oeeStrip', [
+    { k: 'OEE', v: '82.6', unit: '%', s: '较上周 +2.1%' },
+    { k: '稼动率', v: '88.1', unit: '%', s: '在线 28 / 30 台' },
+    { k: 'MTBF', v: '168', unit: 'h', s: '近 30 天' }
+  ]);
+
+  /* 报警动态 */
+  var ALARM_TONE = { '严重': 'danger', '一般': 'warn', '提示': 'info' };
+  M.timeline('#alarmTimeline', E.alarms.map(function (a) {
+    return {
+      tone: ALARM_TONE[a.level] || '',
+      title: a.eq + ' · ' + a.msg,
+      time: a.time,
+      body: '代码 ' + M.esc(a.code) + ' · 等级 ' + M.esc(a.level) + ' · ' + M.esc(a.status)
+    };
+  }));
+
+  /* 设备台账 */
+  var eqCols = [
+    { key: 'code', label: '设备编号', cls: 'mono' },
+    { key: 'name', label: '名称' },
+    { key: 'line', label: '产线', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.line) + '</span>'; } },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } },
+    { key: 'oee', label: 'OEE', cls: 'num', formatter: function (r) { return '<span class="mono">' + r.oee.toFixed(1) + '%</span>'; } },
+    { key: 'util', label: '稼动率', cls: 'num', formatter: function (r) { return '<span class="mono">' + r.util.toFixed(1) + '%</span>'; } },
+    { key: 'temp', label: '温度', cls: 'num', formatter: function (r) { return '<span class="mono">' + r.temp.toFixed(1) + ' ℃</span>'; } },
+    { key: 'hours', label: '运行时长', cls: 'num', formatter: function (r) { return '<span class="mono">' + r.hours.toLocaleString('zh-CN') + ' h</span>'; } },
+    { key: 'maintain', label: '下次保养', cls: 'mono' }
+  ];
+
+  M.table({
+    mount: '#eqTable',
+    columns: eqCols,
+    rows: E.list,
+    pageSize: 8,
+    exportName: '设备台账',
+    rowClass: function (r) { return r.status === '报警' || r.status === '停机' ? 'row-danger' : ''; },
+    onRowClick: openEq
+  });
+
+  /* 报警记录 */
+  M.table({
+    mount: '#alarmTable',
+    columns: [
+      { key: 'time', label: '时间', cls: 'mono' },
+      { key: 'eq', label: '设备', cls: 'mono' },
+      { key: 'code', label: '代码', cls: 'mono' },
+      { key: 'msg', label: '描述' },
+      { key: 'level', label: '等级', formatter: function (r) { return M.tag(r.level, ALARM_TONE[r.level]); } },
+      { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } }
+    ],
+    rows: E.alarms,
+    pageSize: 6,
+    exportName: '报警记录'
+  });
+
+  /* 点检记录 */
+  M.table({
+    mount: '#checkTable',
+    columns: [
+      { key: 'item', label: '点检项' },
+      { key: 'eq', label: '设备', cls: 'mono' },
+      { key: 'period', label: '周期' },
+      { key: 'last', label: '最近点检', cls: 'mono' },
+      { key: 'worker', label: '点检人' },
+      { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } }
+    ],
+    rows: E.inspections,
+    pageSize: 6,
+    exportName: '点检记录'
+  });
+
+  M.bindTabs(document);
+
+  document.getElementById('eqCount').textContent = E.list.length + ' 台';
+
+  /* 设备档案抽屉 */
+  function openEq(row) {
+    M.drawer({
+      title: row.code,
+      sub: row.name + ' · 产线 ' + row.line,
+      body: '<div id="eqDl" class="mb-16"></div>' +
+        '<div class="divider"></div>' +
+        '<div class="hint mb-8">近期报警</div>' +
+        '<div id="eqAlarms"></div>' +
+        '<div class="divider"></div>' +
+        '<div class="note">下次保养日期：' + M.esc(row.maintain) + '，累计运行 ' + row.hours.toLocaleString('zh-CN') + ' h，请按 TPM 计划执行点检与润滑。</div>',
+      footer: '<button class="btn" data-close>关闭</button><div style="flex:1"></div><button class="btn primary" id="eqCmd">下发指令</button>',
+      onMount: function (card, close) {
+        M.dl(card.querySelector('#eqDl'), [
+          ['设备编号', row.code], ['名称', row.name], ['产线', row.line],
+          ['状态', M.tag(row.status), 'html'],
+          ['OEE', row.oee.toFixed(1) + '%'], ['稼动率', row.util.toFixed(1) + '%'],
+          ['温度', row.temp.toFixed(1) + ' ℃'], ['运行时长', row.hours.toLocaleString('zh-CN') + ' h'],
+          ['下次保养', row.maintain]
+        ]);
+        var alarms = E.alarms.filter(function (a) { return a.eq === row.code; });
+        if (alarms.length) {
+          M.timeline(card.querySelector('#eqAlarms'), alarms.map(function (a) {
+            return {
+              tone: ALARM_TONE[a.level] || '',
+              title: a.code + ' · ' + a.msg,
+              time: a.time,
+              body: '等级 ' + M.esc(a.level) + ' · 状态 ' + M.esc(a.status)
+            };
+          }));
+        } else {
+          M.empty(card.querySelector('#eqAlarms'), '近 24 小时无报警', '设备运行平稳，点检记录正常', 'shield');
+        }
+        card.querySelector('#eqCmd').addEventListener('click', function () {
+          close();
+          openCommand(row.code);
+        });
+      }
+    });
+  }
+
+  /* 下发设备指令 */
+  function openCommand(preset) {
+    M.modal({
+      title: '下发设备指令',
+      body: '<div class="form-grid">' +
+          '<div class="field full"><span class="label">设备</span><select class="select" id="cmdEq">' +
+            E.list.map(function (r) {
+              return '<option value="' + M.esc(r.code) + '"' + (r.code === preset ? ' selected' : '') + '>' + M.esc(r.code) + ' · ' + M.esc(r.name) + '</option>';
+            }).join('') +
+          '</select></div>' +
+          '<div class="field"><span class="label">指令类型</span><select class="select" id="cmdType">' +
+            ['启动', '停机', '复位', '校准'].map(function (x) { return '<option>' + x + '</option>'; }).join('') +
+          '</select></div>' +
+          '<div class="field full"><span class="label">备注</span><textarea class="textarea" id="cmdNote" placeholder="可选：指令说明 / 作业要求 / 安全确认"></textarea></div>' +
+        '</div>' +
+        '<div class="note" style="margin-top:12px">指令经设备网关下发，演示环境仅模拟回执，不会驱动真实设备。</div>',
+      footer: '<div style="flex:1"></div><button class="btn" data-close>取消</button><button class="btn primary" id="cmdSubmit">确认下发</button>',
+      onMount: function (card, close) {
+        card.querySelector('#cmdSubmit').addEventListener('click', function () {
+          var eq = card.querySelector('#cmdEq').value;
+          var command = card.querySelector('#cmdType').value;
+          API.sendEquipmentCommand({ eq: eq, command: command }).then(function (res) {
+            close();
+            M.toast('指令已下发：' + res.data.commandId + '（演示）', 'ok');
+          });
+        });
+      }
+    });
+  }
+
+  document.getElementById('btnCommand').addEventListener('click', function () { openCommand(); });
+  document.getElementById('btnExportEquipment').addEventListener('click', function () {
+    M.exportCsv('设备台账', eqCols, E.list);
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>协同管理 · 制造与供应链协同平台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="collab">
+
+<aside class="app-nav" id="appNav"></aside>
+<div class="app-body">
+  <header class="app-topbar" id="appTopbar"></header>
+  <main class="app-content">
+    <div class="page-head">
+      <div>
+        <div class="page-title">协同管理</div>
+        <div class="page-sub">交付计划 · 送货 · 样品送检 · 订单执行 · 交付异常 · 供应商绩效 · 车间物料</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="page-actions">
+        <button class="btn" id="btnException"></button>
+        <button class="btn primary" id="btnShipment"></button>
+      </div>
+    </div>
+
+    <div id="kpiGrid" class="grid-4 stagger mb-16"></div>
+
+    <div class="grid-2-1 mb-16">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="supTitle"></div>
+          <span class="card-sub">准时率 · 质量得分 · 综合评分</span>
+          <div class="spacer"></div>
+          <span class="tag info">本月绩效</span>
+        </div>
+        <div class="card-body tight" id="supTable"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="execTitle"></div>
+          <div class="spacer"></div>
+          <span class="tag outline">按采购订单</span>
+        </div>
+        <div class="card-body tight" id="execTable"></div>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="card-head">
+        <div class="card-title" id="ledgerTitle"></div>
+        <span class="card-sub">交付 · 送货 · 送检 · 异常 · 车间物料</span>
+        <div class="spacer"></div>
+        <span class="tag ok"><span class="led ok pulse" style="margin-right:2px"></span>实时协同</span>
+      </div>
+      <div class="card-body">
+        <div class="tabs" data-tabs>
+          <button class="tab active" data-tab="delivery">交付计划</button>
+          <button class="tab" data-tab="shipment">送货跟踪</button>
+          <button class="tab" data-tab="sample">样品送检</button>
+          <button class="tab" data-tab="exception">异常与绩效</button>
+          <button class="tab" data-tab="workshop">车间物料</button>
+        </div>
+
+        <div class="tab-panel" data-panel="delivery">
+          <div id="deliveryTable"></div>
+        </div>
+
+        <div class="tab-panel hidden" data-panel="shipment">
+          <div id="shipmentTable"></div>
+        </div>
+
+        <div class="tab-panel hidden" data-panel="sample">
+          <div class="between mb-8">
+            <span class="hint">供应商样品送检与审核</span>
+            <button class="btn sm" id="btnSample"></button>
+          </div>
+          <div id="sampleTable"></div>
+        </div>
+
+        <div class="tab-panel hidden" data-panel="exception">
+          <div class="between mb-8">
+            <span class="hint">交付异常台账（协同门户）</span>
+            <span class="tag danger" id="excCount">—</span>
+          </div>
+          <div id="excTable" class="mb-16"></div>
+          <div class="between mb-8">
+            <span class="hint">生产异常（车间反馈）</span>
+            <span class="tag outline">按时间倒序</span>
+          </div>
+          <div id="prodExcTable"></div>
+        </div>
+
+        <div class="tab-panel hidden" data-panel="workshop">
+          <div class="between mb-8">
+            <span class="hint">车间物料（期初 / 领入 / 耗用 / 结存）</span>
+            <span class="tag outline">线边仓</span>
+          </div>
+          <div id="wsTable" class="mb-16"></div>
+          <div class="between mb-8">
+            <span class="hint">车间待检品</span>
+            <span class="tag warn">等待质检</span>
+          </div>
+          <div id="wipTable" class="mb-16"></div>
+          <div class="between mb-8">
+            <span class="hint">生产领料</span>
+            <span class="tag outline">工单领料</span>
+          </div>
+          <div id="pickTable"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="assets/mock.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var M = MESUI;
+  var C = DB.collab;
+
+  document.getElementById('btnException').innerHTML = M.icon('alert') + '异常上报';
+  document.getElementById('btnShipment').innerHTML = M.icon('truck') + '登记送货';
+  document.getElementById('btnSample').innerHTML = M.icon('shield') + '样品送检';
+  document.getElementById('supTitle').innerHTML = M.icon('target') + '供应商交付绩效';
+  document.getElementById('execTitle').innerHTML = M.icon('clipboard') + '订单执行汇总';
+  document.getElementById('ledgerTitle').innerHTML = M.icon('users') + '协同台账';
+
+  M.kpi('#kpiGrid', C.kpis);
+
+  var TONE = {
+    '已确认': 'ok', '执行中': 'info', '待确认': 'warn', '已逾期': 'danger', '已完成': 'ok',
+    '已到货': 'ok', '运输中': 'warn', '已发货': 'info',
+    '处理中': 'warn', '已解决': 'ok', '已关闭': 'ok',
+    '检验中': 'warn', '待检验': 'info', '已领料': 'ok', '待领料': 'info'
+  };
+  function st(text) { return M.tag(text, TONE[text] || M.toneOf(text)); }
+
+  /* 供应商交付绩效 */
+  M.table({
+    mount: '#supTable',
+    columns: [
+      { key: 'supplier', label: '供应商' },
+      { key: 'orders', label: '订单数', cls: 'num' },
+      { key: 'ontime', label: '准时率', sortable: false, formatter: function (r) {
+        return M.progress(r.ontime, M.pctTone(r.ontime)) + '<span class="mono hint">' + r.ontime.toFixed(1) + '%</span>';
+      } },
+      { key: 'quality', label: '质量得分', cls: 'num', formatter: function (r) { return r.quality.toFixed(1); } },
+      { key: 'score', label: '综合评分', cls: 'num', formatter: function (r) { return r.score.toFixed(1); } },
+      { key: 'level', label: '等级', formatter: function (r) {
+        return M.tag(r.level, r.level === 'A' ? 'ok' : r.level === 'B' ? 'warn' : 'danger');
+      } }
+    ],
+    rows: C.supplierSummary,
+    pageSize: 6,
+    exportName: '供应商交付绩效',
+    searchPlaceholder: '搜索供应商',
+    onRowClick: openSupplier
+  });
+
+  /* 订单执行汇总 */
+  M.table({
+    mount: '#execTable',
+    columns: [
+      { key: 'po', label: '采购订单', cls: 'mono' },
+      { key: 'supplier', label: '供应商' },
+      { key: 'ordered', label: '订购', cls: 'num' },
+      { key: 'arrived', label: '已到货', cls: 'num' },
+      { key: 'inTransit', label: '在途', cls: 'num' },
+      { key: 'exception', label: '异常', cls: 'num', formatter: function (r) {
+        return r.exception ? '<span style="color:var(--danger)">' + r.exception + '</span>' : '<span class="muted">0</span>';
+      } },
+      { key: 'rate', label: '执行率', sortable: false, formatter: function (r) {
+        return M.progress(r.rate, M.pctTone(r.rate)) + '<span class="mono hint">' + r.rate + '%</span>';
+      } }
+    ],
+    rows: C.orderExec,
+    pageSize: 6,
+    exportName: '订单执行汇总',
+    searchPlaceholder: '搜索订单 / 供应商'
+  });
+
+  /* 交付计划 */
+  M.table({
+    mount: '#deliveryTable',
+    columns: [
+      { key: 'no', label: '计划号', cls: 'mono' },
+      { key: 'supplier', label: '供应商' },
+      { key: 'material', label: '物料' },
+      { key: 'qty', label: '数量', cls: 'num' },
+      { key: 'planDate', label: '计划日期', cls: 'mono' },
+      { key: 'confirmed', label: '确认状态', formatter: function (r) {
+        return M.tag(r.confirmed, r.confirmed === '已确认' ? 'ok' : 'warn');
+      } },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: C.deliveryPlans,
+    pageSize: 7,
+    exportName: '交付计划',
+    searchPlaceholder: '搜索计划号 / 供应商 / 物料',
+    rowClass: function (r) { return r.status === '已逾期' ? 'row-danger' : ''; },
+    onRowClick: openDelivery
+  });
+
+  /* 送货跟踪 */
+  var shipmentTable = M.table({
+    mount: '#shipmentTable',
+    columns: [
+      { key: 'no', label: '送货单号', cls: 'mono' },
+      { key: 'supplier', label: '供应商' },
+      { key: 'waybill', label: '货运单号', cls: 'mono' },
+      { key: 'material', label: '物料' },
+      { key: 'qty', label: '数量', cls: 'num' },
+      { key: 'eta', label: '预计到货', cls: 'mono' },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: C.shipments,
+    pageSize: 6,
+    exportName: '送货跟踪',
+    searchPlaceholder: '搜索送货单 / 货运单号 / 供应商',
+    onRowClick: openShipment
+  });
+
+  /* 样品送检 */
+  var sampleTable = M.table({
+    mount: '#sampleTable',
+    columns: [
+      { key: 'no', label: '送检单号', cls: 'mono' },
+      { key: 'supplier', label: '供应商' },
+      { key: 'sample', label: '样品' },
+      { key: 'submitDate', label: '送检日期', cls: 'mono' },
+      { key: 'dept', label: '审核部门' },
+      { key: 'result', label: '检验结果', formatter: function (r) {
+        return M.tag(r.result, r.result === '合格' ? 'ok' : r.result === '不合格' ? 'danger' : 'warn');
+      } },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: C.samples,
+    pageSize: 6,
+    exportName: '样品送检',
+    searchPlaceholder: '搜索送检单 / 供应商 / 样品'
+  });
+
+  /* 交付异常 */
+  var excTable = M.table({
+    mount: '#excTable',
+    columns: [
+      { key: 'no', label: '异常单号', cls: 'mono' },
+      { key: 'time', label: '时间', cls: 'mono' },
+      { key: 'type', label: '类型', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.type) + '</span>'; } },
+      { key: 'material', label: '物料' },
+      { key: 'supplier', label: '供应商' },
+      { key: 'qty', label: '数量', cls: 'num' },
+      { key: 'reason', label: '原因' },
+      { key: 'owner', label: '责任人' },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: C.exceptions,
+    pageSize: 6,
+    exportName: '交付异常',
+    searchPlaceholder: '搜索异常单 / 物料 / 供应商'
+  });
+  document.getElementById('excCount').textContent = C.exceptions.length + ' 条';
+
+  /* 生产异常 */
+  M.table({
+    mount: '#prodExcTable',
+    columns: [
+      { key: 'no', label: '异常单号', cls: 'mono' },
+      { key: 'time', label: '时间', cls: 'mono' },
+      { key: 'type', label: '类型', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.type) + '</span>'; } },
+      { key: 'product', label: '产品' },
+      { key: 'qty', label: '数量', cls: 'num' },
+      { key: 'reason', label: '原因' },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: C.prodExceptions,
+    pageSize: 5,
+    exportName: '生产异常',
+    searchPlaceholder: '搜索异常单 / 产品'
+  });
+
+  /* 车间物料 */
+  M.table({
+    mount: '#wsTable',
+    columns: [
+      { key: 'material', label: '物料' },
+      { key: 'line', label: '产线', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.line) + '</span>'; } },
+      { key: 'opening', label: '期初', cls: 'num' },
+      { key: 'received', label: '领入', cls: 'num' },
+      { key: 'used', label: '耗用', cls: 'num' },
+      { key: 'remain', label: '结存', cls: 'num', formatter: function (r) {
+        return r.status === '预警' ? '<span style="color:var(--warning)">' + r.remain + '</span>' : String(r.remain);
+      } },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: C.workshopMaterials,
+    pageSize: 6,
+    exportName: '车间物料',
+    searchPlaceholder: '搜索物料 / 产线'
+  });
+
+  M.table({
+    mount: '#wipTable',
+    columns: [
+      { key: 'product', label: '产品' },
+      { key: 'line', label: '产线', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.line) + '</span>'; } },
+      { key: 'qty', label: '数量', cls: 'num' },
+      { key: 'waitTime', label: '等待时长', cls: 'mono' },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: C.wipInspection,
+    pageSize: 5,
+    exportName: '车间待检品',
+    search: false
+  });
+
+  M.table({
+    mount: '#pickTable',
+    columns: [
+      { key: 'no', label: '领料单号', cls: 'mono' },
+      { key: 'line', label: '产线', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.line) + '</span>'; } },
+      { key: 'material', label: '物料' },
+      { key: 'qty', label: '数量', cls: 'num' },
+      { key: 'date', label: '日期', cls: 'mono' },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: C.picking,
+    pageSize: 5,
+    exportName: '生产领料',
+    search: false
+  });
+
+  /* ---------- 抽屉 ---------- */
+  function openDelivery(r) {
+    var items = [
+      { tone: 'info', title: '交付计划下达', time: '10-24 09:20', body: '采购员与供应商在线确认交付窗口与数量' },
+      { tone: r.confirmed === '已确认' ? 'ok' : 'warn', title: '供应商确认', time: '10-24 15:40', body: r.confirmed === '已确认' ? '供应商已确认数量与到货窗口' : '等待供应商在线确认' }
+    ];
+    if (r.status === '已逾期') {
+      items.push({ tone: 'danger', title: '交付逾期预警', time: '10-25 08:30', body: '计划日期 ' + M.esc(r.planDate) + ' 未完成到货，已通知采购员跟进' });
+    } else if (r.status === '已完成') {
+      items.push({ tone: 'ok', title: '到货完成', time: M.esc(r.planDate) + ' 14:10', body: '数量 ' + r.qty + ' 已全部收货入库' });
+    } else {
+      items.push({ tone: 'active', title: '执行中', time: '进行中', body: '预计 ' + M.esc(r.planDate) + ' 前完成送货' });
+    }
+
+    M.drawer({
+      title: r.no,
+      sub: r.supplier + ' · ' + r.material,
+      body: '<div id="dlvDl" class="mb-16"></div>' +
+        '<div class="divider"></div>' +
+        '<div class="hint mb-8">交付履历</div><div id="dlvTl"></div>',
+      footer: '<button class="btn" data-close>关闭</button><div class="spacer"></div><a class="btn primary" href="purchase.html">查看采购订单</a>',
+      onMount: function (card) {
+        M.dl(card.querySelector('#dlvDl'), [
+          ['计划号', r.no], ['供应商', r.supplier], ['物料', r.material],
+          ['数量', r.qty + ' 件'], ['计划日期', r.planDate],
+          ['确认状态', M.tag(r.confirmed, r.confirmed === '已确认' ? 'ok' : 'warn'), 'html'],
+          ['状态', st(r.status), 'html']
+        ]);
+        M.timeline(card.querySelector('#dlvTl'), items);
+      }
+    });
+  }
+
+  function openShipment(r) {
+    var items = [
+      { tone: 'ok', title: '供应商发货', time: '10-25 08:40', body: '物料 ' + M.esc(r.material) + ' · 数量 ' + r.qty + ' 件' },
+      { tone: 'info', title: '运输中', time: '10-25 10:20', body: '货运单号 ' + M.esc(r.waybill) + '，预计 ' + M.esc(r.eta) + ' 到货' }
+    ];
+    if (r.status === '已到货') {
+      items.push({ tone: 'ok', title: '仓库已收货', time: M.esc(r.eta), body: '收货数量核对一致，已生成采购入库单' });
+    } else {
+      items.push({ tone: 'active', title: '等待到货', time: '进行中', body: '仓库已收到到货通知，按预计时间安排收货' });
+    }
+
+    M.drawer({
+      title: r.no,
+      sub: r.supplier + ' · ' + r.material,
+      body: '<div id="shpDl" class="mb-16"></div>' +
+        '<div class="divider"></div>' +
+        '<div class="hint mb-8">物流轨迹</div><div id="shpTl"></div>',
+      footer: '<button class="btn" data-close>关闭</button><div class="spacer"></div><a class="btn primary" href="inventory.html">查看库存</a>',
+      onMount: function (card) {
+        M.dl(card.querySelector('#shpDl'), [
+          ['送货单号', r.no], ['供应商', r.supplier], ['货运单号', r.waybill],
+          ['物料', r.material], ['数量', r.qty + ' 件'],
+          ['预计到货', r.eta], ['状态', st(r.status), 'html']
+        ]);
+        M.timeline(card.querySelector('#shpTl'), items);
+      }
+    });
+  }
+
+  function openSupplier(r) {
+    M.drawer({
+      title: r.supplier,
+      sub: '本月订单 ' + r.orders + ' 张 · 等级 ' + r.level,
+      body: '<div class="between mb-16" style="gap:16px">' +
+          '<div id="supRing"></div>' +
+          '<div style="flex:1" id="supBars"></div>' +
+        '</div>' +
+        '<div class="divider"></div>' +
+        '<div id="supDl" class="mb-16"></div>' +
+        '<div class="note">综合评分按交付准时率、质量得分与协同响应加权计算；低于 80 分进入供应商改进计划，由采购员跟踪整改。</div>',
+      footer: '<button class="btn" data-close>关闭</button><div class="spacer"></div><a class="btn primary" href="purchase.html">供应商管理</a>',
+      onMount: function (card) {
+        card.querySelector('#supRing').innerHTML = M.ring(r.ontime, '准时率');
+        M.bars(card.querySelector('#supBars'), [
+          { name: '准时率', v: r.ontime, tone: M.pctTone(r.ontime) },
+          { name: '质量得分', v: r.quality, tone: 'ok' },
+          { name: '综合评分', v: r.score, tone: M.pctTone(r.score) }
+        ], { max: 100, unit: ' 分' });
+        M.dl(card.querySelector('#supDl'), [
+          ['供应商', r.supplier], ['订单数', r.orders + ' 张'],
+          ['准时率', r.ontime.toFixed(1) + '%'], ['质量得分', r.quality.toFixed(1)],
+          ['综合评分', r.score.toFixed(1)], ['等级', M.tag(r.level, r.level === 'A' ? 'ok' : r.level === 'B' ? 'warn' : 'danger'), 'html']
+        ]);
+      }
+    });
+  }
+
+  /* ---------- 登记送货 ---------- */
+  function openShipmentForm() {
+    var supplierOpts = DB.purchase.suppliers.map(function (s) {
+      return '<option value="' + M.esc(s.name) + '">' + M.esc(s.code + ' · ' + s.name) + '</option>';
+    }).join('');
+
+    M.modal({
+      title: '登记送货',
+      body: '<div class="form-grid">' +
+          '<div class="field full"><span class="label">供应商</span><select class="select" id="shSupplier">' + supplierOpts + '</select></div>' +
+          '<div class="field"><span class="label">物料</span><input class="input" id="shMaterial" placeholder="如：定子铁芯"></div>' +
+          '<div class="field"><span class="label">数量</span><input class="input" id="shQty" type="number" value="1000" min="1"></div>' +
+          '<div class="field"><span class="label">货运单号</span><input class="input" id="shWaybill" placeholder="如：SF-8826102520"></div>' +
+          '<div class="field"><span class="label">预计到货</span><input class="input" id="shEta" type="datetime-local" value="2026-10-26T10:00"></div>' +
+        '</div>' +
+        '<div class="note" style="margin-top:12px">登记后自动生成送货单并通知仓库收货，供应商可在协同门户查看收货进度。</div>',
+      footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" id="shSubmit">提交登记</button>',
+      onMount: function (card, close) {
+        card.querySelector('#shSubmit').addEventListener('click', function () {
+          var material = card.querySelector('#shMaterial').value.trim();
+          var qty = Number(card.querySelector('#shQty').value) || 0;
+          if (!material) { M.toast('请填写送货物料', 'warn'); return; }
+          if (!qty) { M.toast('请填写送货数量', 'warn'); return; }
+          C.shipments.unshift({
+            no: 'SH-261025-007',
+            supplier: card.querySelector('#shSupplier').value,
+            waybill: card.querySelector('#shWaybill').value.trim() || '待补充',
+            material: material,
+            qty: qty,
+            eta: card.querySelector('#shEta').value.replace('T', ' ') || '待确认',
+            status: '已发货'
+          });
+          shipmentTable.refresh(C.shipments);
+          MES.save();
+          close();
+          M.toast('送货单已登记：SH-261025-007，已通知仓库收货（演示）', 'ok');
+        });
+      }
+    });
+  }
+
+  /* ---------- 样品送检 ---------- */
+  function openSampleForm() {
+    var supplierOpts = DB.purchase.suppliers.map(function (s) {
+      return '<option value="' + M.esc(s.name) + '">' + M.esc(s.code + ' · ' + s.name) + '</option>';
+    }).join('');
+
+    M.modal({
+      title: '样品送检',
+      body: '<div class="form-grid">' +
+          '<div class="field full"><span class="label">供应商</span><select class="select" id="spSupplier">' + supplierOpts + '</select></div>' +
+          '<div class="field"><span class="label">样品名称</span><input class="input" id="spName" placeholder="如：轴承 6204-ZZ"></div>' +
+          '<div class="field"><span class="label">审核部门</span><select class="select" id="spDept"><option>技术部</option><option>工程部</option></select></div>' +
+          '<div class="field full"><span class="label">备注</span><textarea class="textarea" id="spNote" placeholder="可选：送检用途 / 批次 / 检验项"></textarea></div>' +
+        '</div>' +
+        '<div class="note" style="margin-top:12px">送检单提交后进入技术部 / 工程部审核队列，审核通过后方可小批量供货。</div>',
+      footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" id="spSubmit">提交送检</button>',
+      onMount: function (card, close) {
+        card.querySelector('#spSubmit').addEventListener('click', function () {
+          var name = card.querySelector('#spName').value.trim();
+          if (!name) { M.toast('请填写样品名称', 'warn'); return; }
+          C.samples.unshift({
+            no: 'YP-261025-005',
+            supplier: card.querySelector('#spSupplier').value,
+            sample: name,
+            submitDate: '2026-10-25',
+            dept: card.querySelector('#spDept').value,
+            result: '待检',
+            status: '待审核'
+          });
+          sampleTable.refresh(C.samples);
+          MES.save();
+          close();
+          M.toast('样品送检单已创建，待技术部/工程部审核（演示）', 'ok');
+        });
+      }
+    });
+  }
+
+  /* ---------- 异常上报 ---------- */
+  function openExceptionForm() {
+    var supplierOpts = DB.purchase.suppliers.map(function (s) {
+      return '<option value="' + M.esc(s.name) + '">' + M.esc(s.code + ' · ' + s.name) + '</option>';
+    }).join('');
+
+    M.modal({
+      title: '异常上报',
+      body: '<div class="form-grid">' +
+          '<div class="field"><span class="label">异常类型</span><select class="select" id="exType"><option>交付逾期</option><option>质量异常</option><option>单据异常</option></select></div>' +
+          '<div class="field"><span class="label">数量</span><input class="input" id="exQty" type="number" value="100" min="1"></div>' +
+          '<div class="field"><span class="label">物料</span><input class="input" id="exMaterial" placeholder="如：端盖"></div>' +
+          '<div class="field"><span class="label">供应商</span><select class="select" id="exSupplier">' + supplierOpts + '</select></div>' +
+          '<div class="field full"><span class="label">异常原因</span><textarea class="textarea" id="exReason" placeholder="描述异常现象、影响范围与期望处理方式"></textarea></div>' +
+        '</div>' +
+        '<div class="note warn" style="margin-top:12px">上报后同步通知采购员与供应商，异常进入协同门户待办；质量异常将自动关联质量待处理项。</div>',
+      footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" id="exSubmit">提交上报</button>',
+      onMount: function (card, close) {
+        card.querySelector('#exSubmit').addEventListener('click', function () {
+          var material = card.querySelector('#exMaterial').value.trim();
+          var reason = card.querySelector('#exReason').value.trim();
+          var qty = Number(card.querySelector('#exQty').value) || 0;
+          if (!material || !reason) { M.toast('请填写物料与异常原因', 'warn'); return; }
+          C.exceptions.unshift({
+            no: 'YC-261025-006',
+            time: M.now().slice(0, 5),
+            type: card.querySelector('#exType').value,
+            material: material,
+            supplier: card.querySelector('#exSupplier').value,
+            qty: qty,
+            reason: reason,
+            owner: DB.user ? DB.user.name : '张明',
+            status: '待确认'
+          });
+          if (card.querySelector('#exType').value === '质量异常' && DB.quality && DB.quality.issues) {
+            DB.quality.issues.unshift({
+              no: 'QI-261025-' + (7 + Math.floor(Math.random() * 80)), time: M.now().slice(0, 5),
+              source: '供应链协同', product: '来料批次', defect: material + ' · ' + reason,
+              level: '一般', owner: card.querySelector('#exSupplier').value, status: '待处理'
+            });
+          }
+          MES.save();
+          excTable.refresh(C.exceptions);
+          document.getElementById('excCount').textContent = C.exceptions.length + ' 条';
+          close();
+          M.toast('异常已上报，已通知采购员与供应商（演示）', 'ok');
+        });
+      }
+    });
+  }
+
+  document.getElementById('btnShipment').addEventListener('click', openShipmentForm);
+  document.getElementById('btnException').addEventListener('click', openExceptionForm);
+  document.getElementById('btnSample').addEventListener('click', openSampleForm);
+
+  M.bindTabs(document);
+
+  /* 快速新建：?new=exception */
+  if (MES.query('new') === 'exception') setTimeout(function () { openExceptionForm(); MES.clearQuery(); }, 200);
+});
+</script>
+</body>
+</html>

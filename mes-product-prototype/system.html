@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>系统集成 · 制造与供应链协同平台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="system">
+
+<aside class="app-nav" id="appNav"></aside>
+<div class="app-body">
+  <header class="app-topbar" id="appTopbar"></header>
+
+  <main class="app-content">
+    <div class="page-head">
+      <div>
+        <div class="page-title">系统集成</div>
+        <div class="page-sub">接口监控 · 消息日志 · 参数配置 · 角色权限（演示环境，失败消息可重试）</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="page-actions">
+        <button class="btn" id="btnLogExport"></button>
+        <button class="btn primary" id="btnRetryAll"></button>
+      </div>
+    </div>
+
+    <div id="kpiGrid" class="grid-4 stagger mb-16"></div>
+
+    <section class="card mb-16">
+      <div class="card-head">
+        <div class="card-title" id="intTitle">接口监控</div>
+        <span class="card-sub">15 个接口 · 成功率与延迟（含 U8C 财务接口）</span>
+        <div class="spacer"></div>
+        <div class="btn-group" id="intSeg">
+          <button class="active" data-status="全部">全部</button>
+          <button data-status="运行">运行</button>
+          <button data-status="报警">报警</button>
+          <button data-status="停用">停用</button>
+        </div>
+      </div>
+      <div class="card-body tight" id="intTable"></div>
+    </section>
+
+    <div class="grid-2-1 mb-16">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="u8cTitle">U8C 凭证同步</div>
+          <span class="card-sub">存货凭证 · 应付单 · 应收单</span>
+          <div class="spacer"></div>
+          <span class="tag ok" id="u8cRate">同步率 99.9%</span>
+        </div>
+        <div class="card-body tight" id="u8cTable"></div>
+        <div class="card-foot">
+          <span class="hint">会计期间 2026-10 · 最近同步 <span class="mono" id="u8cLast">—</span></span>
+          <div class="spacer"></div>
+          <span class="hint">失败凭证自动进入重试队列</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="u8cSideTitle">凭证流转</div>
+          <div class="spacer"></div>
+          <span class="tag info">MES → U8C</span>
+        </div>
+        <div class="card-body">
+          <div id="u8cStrip" class="mb-16"></div>
+          <div class="divider"></div>
+          <div id="u8cFlow"></div>
+          <div class="divider"></div>
+          <div class="note">业务单据记账后生成存货凭证；采购发票、销售发票分别生成应付单、应收单，经 U8C 接口回传财务系统。</div>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid-2-1 mb-16">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="logTitle">消息日志</div>
+          <div class="spacer"></div>
+          <div class="btn-group" id="logSeg">
+            <button class="active" data-level="全部">全部</button>
+            <button data-level="成功">成功</button>
+            <button data-level="失败">失败</button>
+          </div>
+        </div>
+        <div class="card-body tight" id="logTable"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="topoTitle">集成链路</div>
+          <div class="spacer"></div>
+          <span class="tag ok">主链路正常</span>
+        </div>
+        <div class="card-body">
+          <div id="topoFlow" class="mb-16"></div>
+          <div class="divider"></div>
+          <div id="topoStrip"></div>
+          <div class="divider"></div>
+          <div class="note warn"><b>2 个接口报警</b>：SCADA 采集超时、PLC 扭矩数据解析异常，已进入自动重试队列。</div>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid-2">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="paramTitle">系统参数</div>
+          <div class="spacer"></div>
+          <span class="tag info">修改即时生效</span>
+        </div>
+        <div class="card-body tight" id="paramTable"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="roleTitle">角色与权限</div>
+          <div class="spacer"></div>
+          <span class="tag outline">4 个角色</span>
+        </div>
+        <div class="card-body tight" id="roleTable"></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="assets/mock.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var M = MESUI;
+  var S = DB.system;
+
+  document.getElementById('btnLogExport').innerHTML = M.icon('download') + '导出日志';
+  document.getElementById('btnRetryAll').innerHTML = M.icon('refresh') + '重试失败消息';
+  document.getElementById('intTitle').innerHTML = M.icon('plug') + '接口监控';
+  document.getElementById('logTitle').innerHTML = M.icon('fileText') + '消息日志';
+  document.getElementById('topoTitle').innerHTML = M.icon('link') + '集成链路';
+  document.getElementById('paramTitle').innerHTML = M.icon('settings') + '系统参数';
+  document.getElementById('roleTitle').innerHTML = M.icon('users') + '角色与权限';
+
+  M.kpi('#kpiGrid', S.kpis);
+
+  /* U8C 凭证同步 */
+  document.getElementById('u8cTitle').innerHTML = M.icon('sync') + 'U8C 凭证同步';
+  document.getElementById('u8cSideTitle').innerHTML = M.icon('link') + '凭证流转';
+  document.getElementById('u8cLast').textContent = DB.u8c.lastSync;
+  document.getElementById('u8cRate').textContent = '同步率 99.9%';
+
+  M.statStrip('#u8cStrip', [
+    { k: '已同步', v: '5', unit: '单' },
+    { k: '失败', v: '1', unit: '单', color: 'var(--danger)' },
+    { k: '待推送', v: '2', unit: '单', color: 'var(--warning)' },
+    { k: '会计期间', v: '2026-10' }
+  ]);
+  M.opFlow('#u8cFlow', [
+    { no: 1, name: '业务单据', meta: '入库 / 出库 / 发票', state: 'done' },
+    { no: 2, name: '成本核算', meta: '先进先出', state: 'done' },
+    { no: 3, name: '凭证生成', meta: '存货 / 应收 / 应付', state: 'active' },
+    { no: 4, name: 'U8C 同步', meta: 'REST 回传', state: 'todo' }
+  ]);
+
+  var u8cCols = [
+    { key: 'no', label: '单据号', cls: 'mono' },
+    { key: 'type', label: '类型', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.type) + '</span>'; } },
+    { key: 'source', label: '来源单据' },
+    { key: 'amount', label: '金额(万元)', cls: 'num' },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status, r.status === '失败' ? 'danger' : 'ok'); } },
+    { key: 'time', label: '时间', cls: 'mono' },
+    { key: 'op', label: '操作', sortable: false, formatter: function (r) {
+      return r.status === '失败' ? '<button class="btn sm" data-act="push">重新推送</button>' : '<span class="muted">—</span>';
+    } }
+  ];
+  var u8cTable = M.table({
+    mount: '#u8cTable', columns: u8cCols, rows: DB.u8c.vouchers, pageSize: 6,
+    searchPlaceholder: '搜索凭证号 / 来源单据',
+    onAction: function (act, r) {
+      if (act !== 'push') return;
+      r.status = '已同步';
+      MES.save();
+      M.toast('凭证 ' + r.no + ' 已重新推送至 U8C（演示）', 'ok');
+      u8cTable.refresh(DB.u8c.vouchers);
+    }
+  });
+
+  /* 接口表 */
+  var intCols = [
+    { key: 'name', label: '接口名称' },
+    { key: 'code', label: '编码', cls: 'mono' },
+    { key: 'direction', label: '方向', formatter: function (r) { return '<span class="tag outline">' + r.direction + '</span>'; } },
+    { key: 'protocol', label: '协议', cls: 'mono' },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } },
+    { key: 'success', label: '成功率', cls: 'num', formatter: function (r) {
+      return M.progress(r.success, r.success >= 99.5 ? 'ok' : 'warn') + '<span class="mono hint">' + r.success + '%</span>';
+    }, csv: function (r) { return r.success + '%'; } },
+    { key: 'last', label: '最后同步', cls: 'mono' },
+    { key: 'latency', label: '延迟', cls: 'num' },
+    { key: 'op', label: '操作', sortable: false, formatter: function () { return '<button class="btn sm" data-act="test">测试连接</button>'; } }
+  ];
+  var intTable = null;
+  function renderInt(status) {
+    var rows = status === '全部' ? S.interfaces : S.interfaces.filter(function (r) { return r.status === status; });
+    intTable = M.table({
+      mount: '#intTable', columns: intCols, rows: rows, pageSize: 8, exportName: '接口监控',
+      onAction: function (act, r) {
+        if (act === 'test') {
+          M.toast('正在测试 ' + r.code + ' …', 'info');
+          setTimeout(function () {
+            M.toast(r.status === '报警' ? r.code + ' 连接失败：超时（演示）' : r.code + ' 连接正常，延迟 ' + r.latency, r.status === '报警' ? 'danger' : 'ok');
+          }, 500);
+        }
+      },
+      onRowClick: function (r) {
+        M.drawer({
+          title: r.name, sub: r.code + ' · ' + r.direction + ' · ' + r.protocol,
+          body: '<div id="intDl" class="mb-16"></div><div class="divider"></div><div class="hint mb-8">最近消息</div><div id="intTl"></div>',
+          footer: '<button class="btn" data-close>关闭</button><div class="spacer"></div><button class="btn primary" data-close>重新同步</button>',
+          onMount: function (card) {
+            M.dl(card.querySelector('#intDl'), [
+              ['接口编码', r.code], ['方向', r.direction], ['协议', r.protocol],
+              ['状态', M.tag(r.status), 'html'], ['成功率', r.success + '%'], ['平均延迟', r.latency]
+            ]);
+            M.timeline(card.querySelector('#intTl'), [
+              { tone: r.status === '报警' ? 'danger' : 'ok', title: r.name + ' 最近一次调用', time: r.last, body: r.status === '报警' ? '响应超时，已进入重试队列。' : '调用成功，数据已落库。' },
+              { tone: 'info', title: '昨日对账完成', time: '10-24 23:50', body: '消息数 18,204 · 差异 0 条。' }
+            ]);
+          }
+        });
+      }
+    });
+  }
+  renderInt('全部');
+  M.bindSeg('#intSeg', function (v) { renderInt(v); });
+
+  /* 消息日志 */
+  var logCols = [
+    { key: 'time', label: '时间', cls: 'mono' },
+    { key: 'code', label: '接口', cls: 'mono' },
+    { key: 'msg', label: '消息内容' },
+    { key: 'level', label: '结果', formatter: function (r) { return M.tag(r.level, r.level === '成功' ? 'ok' : 'danger'); } },
+    { key: 'duration', label: '耗时', cls: 'num' },
+    { key: 'op', label: '操作', sortable: false, formatter: function (r) {
+      return r.level === '失败' ? '<button class="btn sm" data-act="retry">重试</button>' : '<span class="muted">—</span>';
+    } }
+  ];
+  var logTable = null;
+  function renderLog(level) {
+    var rows = level === '全部' ? S.logs : S.logs.filter(function (r) { return r.level === level; });
+    logTable = M.table({
+      mount: '#logTable', columns: logCols, rows: rows, pageSize: 7, exportName: '消息日志',
+      onAction: function (act, r) {
+        if (act !== 'retry') return;
+        API.retryMessage({ code: r.code }).then(function (res) {
+          r.level = '成功';
+          M.toast('消息已重新入队：' + r.code + '（演示）', 'ok');
+          renderLog(level);
+        });
+      }
+    });
+  }
+  renderLog('全部');
+  M.bindSeg('#logSeg', function (v) { renderLog(v); });
+
+  /* 拓扑 */
+  M.flow('#topoFlow', [
+    { name: 'ERP', meta: '订单 / 物料', tone: 'ok', icon: 'database', cells: [{ k: '消息', v: '6,240' }, { k: '状态', v: '正常' }] },
+    { name: 'MES', meta: '计划 / 执行 / 质量', tone: 'warn', icon: 'layers', cells: [{ k: '消息', v: '18,426' }, { k: '异常', v: '24' }] },
+    { name: 'WMS', meta: '线边拉动', tone: 'ok', icon: 'warehouse', cells: [{ k: '拉动', v: '126' }, { k: '状态', v: '正常' }] },
+    { name: 'SCADA', meta: '设备采集', tone: 'danger', icon: 'cpu', cells: [{ k: '点位', v: '1,842' }, { k: '超时', v: '3' }] }
+  ]);
+  M.statStrip('#topoStrip', [
+    { k: '今日消息', v: '18,426', unit: '条' },
+    { k: '成功率', v: '99.87', unit: '%' },
+    { k: '平均延迟', v: '186', unit: 'ms' },
+    { k: '待重试', v: '6', unit: '条', color: 'var(--danger)' }
+  ]);
+
+  /* 参数 */
+  var paramCols = [
+    { key: 'name', label: '参数名称' },
+    { key: 'key', label: '参数键', cls: 'mono' },
+    { key: 'value', label: '当前值', cls: 'num', formatter: function (r) { return '<b>' + r.value + '</b> <span class="hint">' + (r.unit || '') + '</span>'; } },
+    { key: 'group', label: '分组', formatter: function (r) { return '<span class="tag outline">' + r.group + '</span>'; } },
+    { key: 'op', label: '操作', sortable: false, formatter: function () { return '<button class="btn sm" data-act="edit">编辑</button>'; } }
+  ];
+  var paramTable = null;
+  function renderParam() {
+    paramTable = M.table({
+      mount: '#paramTable', columns: paramCols, rows: S.params, pageSize: 6, search: false,
+      onAction: function (act, r) {
+        if (act !== 'edit') return;
+        M.modal({
+          title: '编辑参数',
+          body: '<div class="form-grid"><div class="field full"><span class="label">' + r.name + '（' + r.key + '）</span>' +
+            '<input class="input" id="pv" value="' + r.value + '"></div>' +
+            '<div class="field full"><span class="label">说明</span><div class="hint">修改后对后续计划 / 执行生效，历史数据不回算。</div></div></div>',
+          footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" id="pvSave">保存</button>',
+          onMount: function (card, close) {
+            card.querySelector('#pvSave').addEventListener('click', function () {
+              var v = card.querySelector('#pv').value.trim();
+              if (!v) { M.toast('参数值不能为空', 'warn'); return; }
+              r.value = v;
+              close();
+              renderParam();
+              M.toast('参数已更新：' + r.key + ' = ' + v, 'ok');
+            });
+          }
+        });
+      }
+    });
+  }
+  renderParam();
+
+  /* 角色 */
+  M.table({
+    mount: '#roleTable', rows: S.roles, pageSize: 6, search: false,
+    columns: [
+      { key: 'name', label: '角色' },
+      { key: 'users', label: '用户数', cls: 'num' },
+      { key: 'scope', label: '数据范围' },
+      { key: 'menus', label: '功能权限' },
+      { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } }
+    ]
+  });
+
+  /* 操作 */
+  document.getElementById('btnRetryAll').addEventListener('click', function () {
+    M.confirm({
+      title: '重试失败消息',
+      body: '当前有 <b>6</b> 条失败消息待重试，确认进入重试队列？',
+      note: '重试不会重复业务数据（幂等键校验）。',
+      okText: '开始重试',
+      onOk: function () {
+        M.toast('6 条消息已进入重试队列（演示）', 'ok');
+      }
+    });
+  });
+  document.getElementById('btnLogExport').addEventListener('click', function () {
+    M.exportCsv('消息日志', [
+      { label: '时间', key: 'time' }, { label: '接口', key: 'code' },
+      { label: '消息内容', key: 'msg' }, { label: '结果', key: 'level' }, { label: '耗时', key: 'duration' }
+    ], S.logs);
+  });
+});
+</script>
+</body>
+</html>

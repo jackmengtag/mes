@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>基础数据 · 制造与供应链协同平台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="masterdata">
+
+<aside class="app-nav" id="appNav"></aside>
+<div class="app-body">
+  <header class="app-topbar" id="appTopbar"></header>
+
+  <main class="app-content">
+    <div class="page-head">
+      <div>
+        <div class="page-title">基础数据</div>
+        <div class="page-sub">工厂建模 · 产品 / BOM / 工艺路线 / 物料 / 班次班组 · 主数据版本化管理</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="page-actions">
+        <button class="btn" id="btnExportMd"></button>
+        <button class="btn primary" id="btnNewMd"></button>
+      </div>
+    </div>
+
+    <div id="kpiGrid" class="grid-4 stagger mb-16"></div>
+
+    <div class="grid-1-2 mb-16">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="hierTitle">工厂建模层级</div>
+          <div class="spacer"></div>
+          <span class="tag outline">4 层</span>
+        </div>
+        <div class="card-body" id="hierarchy"></div>
+        <div class="card-foot"><span class="hint">层级：工厂 → 车间 → 产线 → 工位，工位绑定设备与采集点。</span></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="mdTitle">主数据台账</div>
+          <div class="spacer"></div>
+          <span class="tag info">版本化</span>
+        </div>
+        <div class="card-body">
+          <div class="tabs" id="mdTabs" data-tabs>
+            <button class="tab active" data-tab="product">产品</button>
+            <button class="tab" data-tab="bom">BOM</button>
+            <button class="tab" data-tab="route">工艺路线</button>
+            <button class="tab" data-tab="material">物料</button>
+            <button class="tab" data-tab="shift">班次与班组</button>
+          </div>
+          <div class="tab-panel" data-panel="product"><div id="productTable"></div></div>
+          <div class="tab-panel hidden" data-panel="bom"><div id="bomTable"></div></div>
+          <div class="tab-panel hidden" data-panel="route"><div id="routeTable"></div></div>
+          <div class="tab-panel hidden" data-panel="material"><div id="materialTable"></div></div>
+          <div class="tab-panel hidden" data-panel="shift">
+            <div class="hint mb-8">班次</div>
+            <div id="shiftTable" class="mb-16"></div>
+            <div class="hint mb-8">班组</div>
+            <div id="teamTable"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid-3">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="stdTitle">编码规则</div>
+        </div>
+        <div class="card-body" id="stdDl"></div>
+      </section>
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="verTitle">版本管理</div>
+          <div class="spacer"></div>
+          <span class="tag ok">已生效 5</span>
+        </div>
+        <div class="card-body" id="verDl"></div>
+      </section>
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="noteTitle">维护提示</div>
+        </div>
+        <div class="card-body">
+          <div class="note mb-12">组织范围：岳阳爱达兴智能科技（制造基地）与江苏高铂尔智能科技（供应链中心）。单位、部门、人员编码直接同步 HR 档案，避免重复维护。</div>
+          <div class="note warn">供应商编码 = 分类 2 位 + 3 位流水；存货编码采用 18 位机号编码。主数据变更走「草稿 → 评审 → 生效」流程。</div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="assets/mock.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var M = MESUI;
+  var D = DB.masterdata;
+
+  document.getElementById('btnExportMd').innerHTML = M.icon('download') + '导出主数据';
+  document.getElementById('btnNewMd').innerHTML = M.icon('plus') + '新增主数据';
+  document.getElementById('hierTitle').innerHTML = M.icon('layers') + '工厂建模层级';
+  document.getElementById('mdTitle').innerHTML = M.icon('database') + '主数据台账';
+  document.getElementById('stdTitle').innerHTML = M.icon('flag') + '编码规则';
+  document.getElementById('verTitle').innerHTML = M.icon('sync') + '版本管理';
+  document.getElementById('noteTitle').innerHTML = M.icon('alert') + '维护提示';
+
+  M.kpi('#kpiGrid', [
+    { label: '产品主数据', value: '5', unit: '个', tone: '', foot: '量产 4 · 试产 1', icon: 'box' },
+    { label: '物料主数据', value: '6', unit: '类', tone: 'ok', foot: '关键件 2 · 自制件 1', icon: 'package' },
+    { label: '供应商档案', value: '8', unit: '家', tone: 'accent', foot: '已审核 7 · 待审核 1', icon: 'users' },
+    { label: '协同组织', value: '2', unit: '家', tone: '', foot: '制造基地 + 供应链中心', icon: 'layers' }
+  ]);
+
+  /* 建模层级 */
+  var hierHtml = D.hierarchy.map(function (r) {
+    var indent = 6 + r.level * 20;
+    var tone = r.type === '工厂' ? 'primary' : r.type === '车间' ? 'accent' : r.type === '产线' ? 'ok' : 'mute';
+    return '<div class="between" style="padding:7px 4px 7px ' + indent + 'px;border-bottom:1px dashed var(--border)">' +
+      '<div class="flex gap-8"><span class="dot ' + tone + '"></span>' +
+        '<span style="font-weight:' + (r.level <= 1 ? 600 : 400) + '">' + M.esc(r.name) + '</span>' +
+        '<span class="tag ' + (r.type === '工位' ? 'mute' : 'outline') + '">' + M.esc(r.type) + '</span></div>' +
+      '<div class="flex gap-12"><span class="mono hint">' + M.esc(r.code) + '</span>' +
+        '<span class="hint">' + M.esc(r.meta) + '</span></div>' +
+    '</div>';
+  }).join('');
+  document.getElementById('hierarchy').innerHTML = hierHtml;
+
+  /* 产品 */
+  M.table({
+    mount: '#productTable', rows: D.products, pageSize: 6, exportName: '产品主数据',
+    columns: [
+      { key: 'code', label: '产品编码', cls: 'mono' },
+      { key: 'name', label: '产品名称' },
+      { key: 'family', label: '产品族' },
+      { key: 'unit', label: '单位' },
+      { key: 'version', label: '版本', cls: 'mono' },
+      { key: 'lifecycle', label: '生命周期', formatter: function (r) { return M.tag(r.lifecycle); } }
+    ],
+    onRowClick: function (r) {
+      M.drawer({
+        title: r.name, sub: r.code + ' · ' + r.family,
+        body: '<div id="pdDl" class="mb-16"></div><div class="divider"></div><div class="hint mb-8">关联版本</div><div id="pdTl"></div>',
+        footer: '<button class="btn" data-close>关闭</button><div class="spacer"></div><a class="btn primary" href="production.html">查看工单</a>',
+        onMount: function (card) {
+          M.dl(card.querySelector('#pdDl'), [
+            ['产品编码', r.code], ['产品族', r.family], ['单位', r.unit],
+            ['当前版本', r.version], ['生命周期', M.tag(r.lifecycle), 'html']
+          ]);
+          M.timeline(card.querySelector('#pdTl'), [
+            { tone: 'ok', title: 'BOM ' + r.version.replace('V', 'BOM-V') + ' 生效', time: '2026-09-18', body: '变更点：编码器供应商切换，需同步工艺参数。' },
+            { tone: 'info', title: '工艺路线发布', time: '2026-08-02', body: '共 8 道工序，瓶颈工位 OP40。' }
+          ]);
+        }
+      });
+    }
+  });
+
+  /* BOM */
+  M.table({
+    mount: '#bomTable', rows: D.boms, pageSize: 6, exportName: 'BOM',
+    columns: [
+      { key: 'product', label: '产品', cls: 'mono' },
+      { key: 'version', label: 'BOM 版本', cls: 'mono' },
+      { key: 'items', label: '物料项数', cls: 'num' },
+      { key: 'key', label: '关键件' },
+      { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } }
+    ]
+  });
+
+  /* 工艺路线 */
+  M.table({
+    mount: '#routeTable', rows: D.routes, pageSize: 6, exportName: '工艺路线',
+    columns: [
+      { key: 'product', label: '产品', cls: 'mono' },
+      { key: 'route', label: '路线编码', cls: 'mono' },
+      { key: 'ops', label: '工序数', cls: 'num' },
+      { key: 'cycle', label: '标准节拍', cls: 'num' },
+      { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } }
+    ]
+  });
+
+  /* 物料 */
+  M.table({
+    mount: '#materialTable', rows: D.materials, pageSize: 6, exportName: '物料主数据',
+    columns: [
+      { key: 'code', label: '物料编码', cls: 'mono' },
+      { key: 'name', label: '名称' },
+      { key: 'type', label: '类型', formatter: function (r) { return '<span class="tag outline">' + r.type + '</span>'; } },
+      { key: 'unit', label: '单位' },
+      { key: 'supplier', label: '供应商' },
+      { key: 'lead', label: '采购提前期', cls: 'num' }
+    ]
+  });
+
+  /* 班次 */
+  M.table({
+    mount: '#shiftTable', rows: D.shifts, pageSize: 4, search: false,
+    columns: [
+      { key: 'name', label: '班次' },
+      { key: 'time', label: '时间', cls: 'mono' },
+      { key: 'break', label: '休息', cls: 'mono' },
+      { key: 'capacity', label: '产能系数', cls: 'num' },
+      { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } }
+    ]
+  });
+
+  /* 班组 */
+  M.table({
+    mount: '#teamTable', rows: D.teams, pageSize: 4, search: false,
+    columns: [
+      { key: 'name', label: '班组' },
+      { key: 'leader', label: '组长' },
+      { key: 'members', label: '人数', cls: 'num' },
+      { key: 'line', label: '负责产线', cls: 'mono' },
+      { key: 'shift', label: '班次' }
+    ]
+  });
+
+  /* 编码规则 / 版本 */
+  M.dl('#stdDl', [
+    ['单位 / 部门 / 人员', '采用 HR 编码同步'],
+    ['供应商分类', '2 位：整车 01 / 物料 02 / 外协 03 / 服务 04'],
+    ['供应商编码', '分类 2 位 + 3 位流水'],
+    ['存货（产品）', '18 位机号编码'],
+    ['物料 / 物料分类', '基础档案模块统一维护'],
+    ['产品 / 工序', '基础档案同步显示']
+  ], '104px');
+  M.dl('#verDl', [
+    ['生效中', '4 套'],
+    ['试产版本', '1 套'],
+    ['待评审', '2 套'],
+    ['最近发布', '2026-09-18'],
+    ['变更单', 'ECO-261001']
+  ], '88px');
+
+  /* 新增主数据 */
+  document.getElementById('btnNewMd').addEventListener('click', function () {
+    M.modal({
+      title: '新增主数据',
+      wide: true,
+      body: '<div class="form-grid">' +
+        '<div class="field"><span class="label">主数据类型</span><select class="select" id="mdType">' +
+          '<option>产品</option><option>物料</option><option>BOM</option><option>工艺路线</option><option>工位</option></select></div>' +
+        '<div class="field"><span class="label">编码</span><input class="input" id="mdCode" placeholder="例如 P-SD600"></div>' +
+        '<div class="field"><span class="label">名称</span><input class="input" id="mdName" placeholder="例如 SD-600 伺服驱动器"></div>' +
+        '<div class="field"><span class="label">版本</span><input class="input" id="mdVer" value="V1.0"></div>' +
+        '<div class="field full"><span class="label">备注</span><textarea class="textarea" placeholder="变更原因 / 生效范围"></textarea></div>' +
+      '</div><div class="note" style="margin-top:12px">保存后进入「草稿」状态，需主数据管理员评审后生效。</div>',
+      footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" id="mdSave">保存草稿</button>',
+      onMount: function (card, close) {
+        card.querySelector('#mdSave').addEventListener('click', function () {
+          var code = card.querySelector('#mdCode').value.trim();
+          var name = card.querySelector('#mdName').value.trim();
+          if (!code || !name) { M.toast('请填写编码与名称', 'warn'); return; }
+          close();
+          M.toast('已保存草稿：' + code + '，等待评审', 'ok');
+        });
+      }
+    });
+  });
+
+  document.getElementById('btnExportMd').addEventListener('click', function () {
+    M.exportCsv('产品主数据', [
+      { label: '产品编码', key: 'code' }, { label: '产品名称', key: 'name' },
+      { label: '产品族', key: 'family' }, { label: '版本', key: 'version' },
+      { label: '生命周期', key: 'lifecycle' }
+    ], D.products);
+  });
+});
+</script>
+</body>
+</html>

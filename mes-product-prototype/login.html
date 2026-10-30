@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>登录 · 制造与供应链协同平台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="login">
+
+<div class="login-wrap">
+  <section class="login-hero">
+    <div class="login-brand">
+      <span class="brand-mark">MES</span>
+      <span>制造与供应链协同平台</span>
+    </div>
+    <h1>从供应商到客户<br>一单到底</h1>
+    <p class="lead">以订单为主线，贯通<b>采购、销售、生产制造、库存、存货核算与供应链协同</b>，并与 <b>U8C</b> 打通存货凭证与应收应付，让每一次交付都可协同、可跟踪、可核算。</p>
+    <div class="hero-stat">
+      <div>
+        <div class="hs-v">2</div>
+        <div class="hs-l">家协同组织</div>
+      </div>
+      <div>
+        <div class="hs-v">92.6%</div>
+        <div class="hs-l">供应商交付准时率</div>
+      </div>
+      <div>
+        <div class="hs-v">99.9%</div>
+        <div class="hs-l">U8C 凭证同步率</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="login-form-side" style="background:var(--surface);border-left:1px solid var(--border)">
+    <form class="login-card" id="loginForm" novalidate>
+      <h2>账号登录</h2>
+      <p class="login-tip">登录制造与供应链协同平台，查看采购、库存、生产与交付数据</p>
+
+      <div class="field">
+        <label class="label" for="loginUser">账号</label>
+        <input class="input" id="loginUser" type="text" autocomplete="username" placeholder="请输入账号">
+      </div>
+      <div class="field">
+        <label class="label" for="loginPass">密码</label>
+        <input class="input" id="loginPass" type="password" autocomplete="current-password" placeholder="请输入密码">
+      </div>
+
+      <div class="login-row">
+        <label class="check"><input type="checkbox" id="rememberMe">记住我</label>
+        <a id="forgotLink" role="button" tabindex="0" style="cursor:pointer">忘记密码？</a>
+      </div>
+
+      <button class="btn primary block" type="submit" id="loginBtn" style="height:38px;font-size:13px">登录</button>
+
+      <div class="note" style="margin-top:14px">演示账号 admin / 123456</div>
+
+      <div class="login-foot">© 2026 岳阳爱达兴智能科技 · 江苏高铂尔智能科技<br>制造与供应链协同平台 v2.5 · 建议使用 Chrome / Edge 浏览器访问</div>
+    </form>
+  </section>
+</div>
+
+<script src="assets/mock.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var M = MESUI;
+  var form = document.getElementById('loginForm');
+  var user = document.getElementById('loginUser');
+  var pass = document.getElementById('loginPass');
+  var btn = document.getElementById('loginBtn');
+  var busy = false;
+
+  btn.innerHTML = M.icon('arrowRight') + '登录';
+
+  function doLogin() {
+    if (busy) return;
+    var u = user.value.replace(/\s/g, '');
+    var p = pass.value.replace(/\s/g, '');
+    if (!u) { M.toast('请输入账号', 'warn'); user.focus(); return; }
+    if (!p) { M.toast('请输入密码', 'warn'); pass.focus(); return; }
+    busy = true;
+    btn.disabled = true;
+    btn.innerHTML = '登录中…';
+    setTimeout(function () {
+      M.toast('登录成功，正在进入制造与供应链协同平台', 'ok');
+      setTimeout(function () { window.location.href = 'index.html'; }, 420);
+    }, 320);
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    doLogin();
+  });
+
+  [user, pass].forEach(function (input) {
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        doLogin();
+      }
+    });
+  });
+
+  var forgot = document.getElementById('forgotLink');
+  function forgotTip() { M.toast('请联系系统管理员重置密码', 'info'); }
+  forgot.addEventListener('click', function (e) {
+    e.preventDefault();
+    forgotTip();
+  });
+  forgot.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      forgotTip();
+    }
+  });
+});
+</script>
+</body>
+</html>

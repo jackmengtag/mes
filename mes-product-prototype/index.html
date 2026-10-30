@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>生产总览 · 制造与供应链协同平台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="index">
+
+<aside class="app-nav" id="appNav"></aside>
+<div class="app-body">
+  <header class="app-topbar" id="appTopbar"></header>
+
+  <main class="app-content">
+    <div class="page-head">
+      <div>
+        <div class="page-title">生产总览</div>
+        <div class="page-sub" id="pageSub">爱达兴 · 高铂尔制造基地 · 机加 / 装配 / 测试包装 · 工作日期 2026-10-25 · 白班 08:00-20:00</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="page-actions">
+        <a class="btn" href="scm.html" id="btnScm"></a>
+        <span class="tag ok"><span class="led ok pulse" style="margin-right:2px"></span>实时数据</span>
+        <button class="btn" id="btnRefresh"></button>
+        <button class="btn primary" id="btnExport"></button>
+      </div>
+    </div>
+
+    <div id="kpiGrid" class="grid-4 stagger mb-16"></div>
+
+    <section class="card mb-16">
+      <div class="card-head">
+        <div class="card-title" id="flowTitle">作业线 · 机加 → 装配 → 测试 → 包装</div>
+        <span class="card-sub">计划线 / 作业线 / 监控线 / 管理线 四线合一</span>
+        <div class="spacer"></div>
+        <span class="tag info">D+3 主计划驱动</span>
+      </div>
+      <div class="card-body">
+        <div id="flowChain"></div>
+        <div class="divider"></div>
+        <div class="legend">
+          <span class="lg"><span class="dot primary"></span>正常</span>
+          <span class="lg"><span class="dot warn"></span>预警（待料 / 高在制）</span>
+          <span class="lg"><span class="dot ok"></span>达成</span>
+          <span class="lg"><span class="dot mute"></span>产出为合格下线数，WIP 含在制与待检</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid-2-1 mb-16">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="lineTitle">产线负荷与效率</div>
+          <div class="spacer"></div>
+          <span class="tag mute">白班实时</span>
+        </div>
+        <div class="card-body tight" id="lineTable"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="planTitle">计划达成</div>
+          <div class="spacer"></div>
+          <span class="tag accent">主计划</span>
+        </div>
+        <div class="card-body">
+          <div class="center" style="flex-direction:column;gap:12px">
+            <div id="planRing"></div>
+            <div id="planStrip" style="width:100%"></div>
+            <div class="hint" style="text-align:center">D+3 已锁定 · 每日 15:00 前发布次日计划并同步各车间</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid-2 mb-16">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="hourTitle">今日分时产出</div>
+          <span class="card-sub">单位：台</span>
+          <div class="spacer"></div>
+          <span class="tag info">峰值 17:00</span>
+        </div>
+        <div class="card-body">
+          <div id="hourBars"></div>
+          <div class="divider"></div>
+          <div class="between mb-8"><span class="hint">近 7 日产出趋势</span><span class="mono sub">1,180 → 1,284</span></div>
+          <div id="trendSpark"></div>
+          <div class="chart-axis"><span>10-19</span><span>10-21</span><span>10-23</span><span>10-25</span></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="dpuTitle">各产线 DPU（下线缺陷率）</div>
+          <span class="card-sub">件/台</span>
+          <div class="spacer"></div>
+          <a class="btn sm ghost" href="quality.html">质量管理›</a>
+        </div>
+        <div class="card-body">
+          <div id="dpuBars"></div>
+          <div class="divider"></div>
+          <div class="hint">装配二线 DPU 0.036 高于目标 0.03，主要集中于端盖装配间隙与扭矩超差。</div>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid-2 mb-16">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="alertTitle">异常与预警</div>
+          <div class="spacer"></div>
+          <span class="tag danger" id="alertCount">4 项待处理</span>
+        </div>
+        <div class="card-body" id="alertTimeline"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="kitTitle">关键物料齐套</div>
+          <div class="spacer"></div>
+          <a class="btn sm ghost" href="material.html">线边物料›</a>
+        </div>
+        <div class="card-body">
+          <div class="meter-row mb-12">
+            <span class="meter-label">整体齐套率</span>
+            <div class="progress lg"><div class="progress-bar warn" style="width:90%"></div></div>
+            <span class="meter-val">90%</span>
+          </div>
+          <div class="divider"></div>
+          <div id="kitBars"></div>
+          <div class="divider"></div>
+          <div class="note warn"><b>缺料预警</b>：定子铁芯库存 1,240 件，低于安全库存 2,000 件；预计 14:30 到货 4,000 件，影响 AS-02 两张工单。</div>
+        </div>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="card-head">
+        <div class="card-title" id="orderTitle">产品流动目视</div>
+        <span class="card-sub">按生产顺序 · 点击行查看履历</span>
+        <div class="spacer"></div>
+        <a class="btn sm ghost" href="production.html">生产执行›</a>
+      </div>
+      <div class="card-body tight" id="orderTable"></div>
+    </section>
+  </main>
+</div>
+
+<script src="assets/mock.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var M = MESUI;
+  var d = DB.overview;
+
+  /* 页头操作按钮图标 */
+  document.getElementById('btnRefresh').innerHTML = M.icon('refresh') + '刷新';
+  document.getElementById('btnScm').innerHTML = M.icon('link') + '供应链总览';
+  document.getElementById('btnExport').innerHTML = M.icon('download') + '导出日报';
+  document.getElementById('flowTitle').innerHTML = M.icon('gitBranch') + '作业线 · 机加 → 装配 → 测试 → 包装';
+  document.getElementById('lineTitle').innerHTML = M.icon('activity') + '产线负荷与效率';
+  document.getElementById('planTitle').innerHTML = M.icon('target') + '计划达成';
+  document.getElementById('hourTitle').innerHTML = M.icon('chart') + '今日分时产出';
+  document.getElementById('dpuTitle').innerHTML = M.icon('shield') + '各产线 DPU（下线缺陷率）';
+  document.getElementById('alertTitle').innerHTML = M.icon('alert') + '异常与预警';
+  document.getElementById('kitTitle').innerHTML = M.icon('package') + '关键物料齐套';
+  document.getElementById('orderTitle').innerHTML = M.icon('truck') + '产品流动目视';
+
+  /* KPI */
+  M.kpi('#kpiGrid', d.kpis);
+
+  /* 作业线 */
+  M.flow('#flowChain', d.flow);
+
+  /* 产线表 */
+  var lineCols = [
+    { key: 'line', label: '产线', formatter: function (r) { return '<span class="mono" style="font-weight:600">' + r.line + '</span>'; } },
+    { key: 'ws', label: '车间', formatter: function (r) { return '<span class="tag outline">' + r.ws + '</span>'; } },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } },
+    { key: 'done', label: '完成 / 计划', cls: 'num', formatter: function (r) { return r.done + ' / ' + r.plan; }, csv: function (r) { return r.done + '/' + r.plan; } },
+    { key: 'rate', label: '进度', sortable: false, formatter: function (r) {
+      var p = Math.round(r.done / r.plan * 100);
+      return M.progress(p, M.pctTone(p)) + '<span class="mono hint">' + p + '%</span>';
+    } },
+    { key: 'ftt', label: 'FTT', cls: 'num', formatter: function (r) { return r.ftt + '%'; } },
+    { key: 'oee', label: 'OEE', cls: 'num', formatter: function (r) { return r.oee + '%'; } }
+  ];
+  M.table({ mount: '#lineTable', columns: lineCols, rows: d.lines, pageSize: 6, search: false, exportName: '产线负荷' });
+
+  /* 计划达成 */
+  document.getElementById('planRing').innerHTML = M.ring(91.7, '计划达成率', 'ok');
+  M.statStrip('#planStrip', [
+    { k: '计划', v: '1,400', unit: '台' },
+    { k: '完成', v: '1,284', unit: '台' },
+    { k: '缺口', v: '116', unit: '台', color: 'var(--danger)' },
+    { k: '预计达成', v: '98.2', unit: '%' }
+  ]);
+
+  /* 分时产出 + 趋势 */
+  M.vbars('#hourBars', d.hourly);
+  M.sparkline('#trendSpark', d.outputTrend.map(function (x) { return x.v; }), 'primary');
+
+  /* DPU */
+  M.bars('#dpuBars', d.dpu.map(function (x) { return { name: x.name, v: x.v.toFixed(3), tone: x.v > 0.03 ? 'accent' : '' }; }), { max: 0.04 });
+
+  /* 预警 */
+  M.timeline('#alertTimeline', d.alerts);
+  document.getElementById('alertCount').textContent = d.alerts.length + ' 项待处理';
+
+  /* 齐套 */
+  M.bars('#kitBars', d.kitting.map(function (k) { return { name: k.name, v: k.v, tone: k.v >= 95 ? 'ok' : k.v < 85 ? 'accent' : '' }; }), { unit: '%', max: 100 });
+
+  /* 产品流动 */
+  var orderCols = [
+    { key: 'seq', label: '顺序', cls: 'num' },
+    { key: 'serial', label: '序列号', cls: 'mono' },
+    { key: 'model', label: '产品型号' },
+    { key: 'order', label: '客户订单', cls: 'mono' },
+    { key: 'stage', label: '当前环节', formatter: function (r) { return '<span class="tag outline">' + r.stage + '</span>'; } },
+    { key: 'station', label: '当前位置', cls: 'mono' },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } },
+    { key: 'eta', label: '预计完成', cls: 'mono' }
+  ];
+  M.table({
+    mount: '#orderTable', columns: orderCols, rows: d.orders, pageSize: 6, exportName: '产品流动',
+    onRowClick: function (row) {
+      M.drawer({
+        title: row.serial,
+        sub: row.model + ' · ' + row.order,
+        body: '<div class="dl mb-16">' +
+          '<dt>当前环节</dt><dd>' + row.stage + '</dd>' +
+          '<dt>当前位置</dt><dd class="mono">' + row.station + '</dd>' +
+          '<dt>状态</dt><dd>' + M.tag(row.status) + '</dd>' +
+          '<dt>预计完成</dt><dd class="mono">' + row.eta + '</dd></div>' +
+          '<div class="divider"></div><div class="hint mb-8">工序履历</div><div id="drwTrace"></div>',
+        footer: '<button class="btn" data-close>关闭</button><div class="spacer"></div><a class="btn primary" href="trace.html?serial=' + encodeURIComponent(row.serial) + '">进入追溯</a>',
+        onMount: function (card) {
+          M.timeline(card.querySelector('#drwTrace'), [
+            { tone: 'ok', title: '机加 · OP30 转子压装', time: '08:56', body: '压装高度 42.06mm · 合格' },
+            { tone: 'ok', title: '装配 · OP50 拧紧', time: '10:24', body: '扭矩 20.4N·m · 合格' },
+            { tone: 'warn', title: '装配 · OP40 端盖装配', time: '10:52', body: '间隙 0.21mm 接近上限，已标记重点检查' },
+            { tone: 'active', title: '测试 · 待性能测试', time: '11:40', body: '排队 T2 测试台' }
+          ]);
+        }
+      });
+    }
+  });
+
+  /* 交互 */
+  document.getElementById('btnRefresh').addEventListener('click', function () {
+    var btn = this;
+    btn.disabled = true;
+    btn.classList.add('is-loading');
+    API.getOverview().then(function (res) {
+      M.kpi('#kpiGrid', res.data.kpis);
+      M.toast('数据已刷新 · ' + M.now(), 'ok');
+      btn.disabled = false;
+      btn.classList.remove('is-loading');
+    });
+  });
+  document.getElementById('btnExport').addEventListener('click', function () {
+    M.exportCsv('生产日报', lineCols, d.lines);
+  });
+
+  /* 30 秒轻量刷新提示（演示用） */
+  M.live(function () {
+    var el = document.getElementById('pageSub');
+    if (el) el.innerHTML = DB.plant.name + ' · 机加 / 装配 / 测试包装 · 工作日期 ' + DB.plant.workDate + ' · 白班 08:00-20:00';
+  }, 30000);
+});
+</script>
+</body>
+</html>

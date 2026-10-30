@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>计划管理 · 制造与供应链协同平台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="plan">
+
+<aside class="app-nav" id="appNav"></aside>
+<div class="app-body">
+  <header class="app-topbar" id="appTopbar"></header>
+
+  <main class="app-content">
+    <div class="page-head">
+      <div>
+        <div class="page-title">计划管理</div>
+        <div class="page-sub">D+7 滚动 · D+3 锁定 · 日计划 → 班次工单</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="page-actions">
+        <button class="btn" id="btnExportPlan"></button>
+        <button class="btn primary" id="btnPublish"></button>
+      </div>
+    </div>
+
+    <div id="kpiGrid" class="grid-4 stagger mb-16"></div>
+
+    <section class="card mb-16">
+      <div class="card-head">
+        <div class="card-title" id="flowTitle"></div>
+        <span class="card-sub">需求 → 月 → 周 → 日 → 班次工单 → 发布</span>
+        <div class="spacer"></div>
+        <span class="tag info">D+7 滚动</span>
+      </div>
+      <div class="card-body">
+        <div id="planFlow"></div>
+        <div class="divider"></div>
+        <div class="grid-3">
+          <div class="note"><b>滚动与锁定</b><br>D+7 滚动预测，每日 15:00 刷新；D+3 计划锁版，变更需生产经理审批。</div>
+          <div class="note warn"><b>换型与产能</b><br>同产品族连续排产，单次换型 ≥ 30min；同步校验设备能力、人员出勤与物料齐套。</div>
+          <div class="note"><b>发布与执行</b><br>日计划分解为班次工单后下发，同步至生产执行、线边物料与设备采集。</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid-1-2 mb-16">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="warnTitle"></div>
+          <div class="spacer"></div>
+          <span class="tag danger">3 项</span>
+        </div>
+        <div class="card-body">
+          <div id="warnTimeline"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="ledgerTitle"></div>
+          <div class="spacer"></div>
+          <span class="tag outline">日 / 周 / 月</span>
+        </div>
+        <div class="card-body">
+          <div class="tabs" data-tabs>
+            <button class="tab active" data-tab="d3">D+3 锁定计划</button>
+            <button class="tab" data-tab="weekly">本周计划</button>
+            <button class="tab" data-tab="monthly">本月计划</button>
+          </div>
+          <div class="tab-panel" data-panel="d3">
+            <div id="d3Table"></div>
+          </div>
+          <div class="tab-panel hidden" data-panel="weekly">
+            <div id="weeklyTable"></div>
+          </div>
+          <div class="tab-panel hidden" data-panel="monthly">
+            <div id="monthlyTable"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid-2-1">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="ganttTitle"></div>
+          <span class="card-sub">6 条产线 · 2 班</span>
+          <div class="spacer"></div>
+          <span class="tag ok">白班进行中</span>
+        </div>
+        <div class="card-body">
+          <div id="planGantt"></div>
+          <div class="divider"></div>
+          <div class="legend">
+            <span class="lg"><span class="dot primary"></span>正常排程</span>
+            <span class="lg"><span class="dot ok"></span>进度领先</span>
+            <span class="lg"><span class="dot warn"></span>待料 / 产能预警</span>
+            <span class="lg"><span class="dot mute"></span>夜班 20:00 起排</span>
+          </div>
+          <div class="hint mt-8">甘特按 08:00-20:00 白班时间轴展开，夜班工单顺延至次日 02:00 完成。</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="rulesTitle"></div>
+          <div class="spacer"></div>
+          <span class="tag mute">系统参数</span>
+        </div>
+        <div class="card-body">
+          <div id="planRules"></div>
+          <div class="divider"></div>
+          <div class="hint">规则变更统一在「系统集成 · 参数配置」维护，发布后次日生效。</div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="assets/mock.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var M = MESUI;
+  var P = DB.plans;
+
+  document.getElementById('btnPublish').innerHTML = M.icon('check') + '发布计划';
+  document.getElementById('btnExportPlan').innerHTML = M.icon('download') + '导出计划';
+  document.getElementById('flowTitle').innerHTML = M.icon('gitBranch') + '计划流程';
+  document.getElementById('warnTitle').innerHTML = M.icon('alert') + '计划预警';
+  document.getElementById('ledgerTitle').innerHTML = M.icon('clipboard') + '计划台账';
+  document.getElementById('ganttTitle').innerHTML = M.icon('chart') + '当日产线排程';
+  document.getElementById('rulesTitle').innerHTML = M.icon('settings') + '排产规则';
+
+  /* KPI */
+  M.kpi('#kpiGrid', P.kpis);
+
+  /* 计划流程 */
+  M.opFlow('#planFlow', [
+    { no: 1, name: '需求接收', meta: 'ERP 订单 + 预测', state: 'done' },
+    { no: 2, name: '月计划', meta: '产能 / 物料平衡', state: 'done' },
+    { no: 3, name: '周计划', meta: 'D+7 滚动', state: 'done' },
+    { no: 4, name: '日计划', meta: '产线 / 班次分解', state: 'active' },
+    { no: 5, name: '班次工单', meta: 'D+3 锁定', state: 'todo' },
+    { no: 6, name: '计划发布', meta: '15:00 前下发', state: 'todo' }
+  ]);
+
+  /* 预警 / 甘特 / 规则 */
+  M.timeline('#warnTimeline', P.warnings);
+  M.gantt('#planGantt', P.gantt, ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00']);
+  M.dl('#planRules', P.rules);
+
+  /* 三页签台账 */
+  var d3Cols = [
+    { key: 'date', label: '计划日期', cls: 'mono' },
+    { key: 'product', label: '产品' },
+    { key: 'qty', label: '数量', cls: 'num' },
+    { key: 'line', label: '产线', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.line) + '</span>'; } },
+    { key: 'shift', label: '班次' },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } }
+  ];
+  var weeklyCols = [
+    { key: 'week', label: '计划周期', cls: 'mono' },
+    { key: 'plan', label: '计划', cls: 'num' },
+    { key: 'done', label: '完成', cls: 'num' },
+    { key: 'rate', label: '达成率', sortable: false, formatter: function (r) {
+      if (!r.done) return '<span class="muted">—</span>';
+      return M.progress(r.rate, M.pctTone(r.rate)) + '<span class="mono hint">' + r.rate + '%</span>';
+    } },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } }
+  ];
+  var monthlyCols = [
+    { key: 'line', label: '产线', cls: 'mono' },
+    { key: 'plan', label: '月计划', cls: 'num' },
+    { key: 'done', label: '已完成', cls: 'num' },
+    { key: 'rate', label: '达成率', sortable: false, formatter: function (r) {
+      return M.progress(r.rate, M.pctTone(r.rate)) + '<span class="mono hint">' + r.rate + '%</span>';
+    } },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } }
+  ];
+
+  M.table({
+    mount: '#d3Table', columns: d3Cols, rows: P.d3, pageSize: 6, exportName: 'D+3锁定计划',
+    searchPlaceholder: '搜索日期 / 产品 / 产线',
+    onRowClick: function (r) { openPlanRow(r, 'd3'); }
+  });
+  M.table({
+    mount: '#weeklyTable', columns: weeklyCols, rows: P.weekly, pageSize: 6, exportName: '本周计划',
+    searchPlaceholder: '搜索计划周期',
+    onRowClick: function (r) { openPlanRow(r, 'weekly'); }
+  });
+  M.table({
+    mount: '#monthlyTable', columns: monthlyCols, rows: P.monthly, pageSize: 6, exportName: '本月计划',
+    searchPlaceholder: '搜索产线',
+    onRowClick: function (r) { openPlanRow(r, 'monthly'); }
+  });
+
+  /* 计划行抽屉 */
+  function openPlanRow(r, type) {
+    var title = '', sub = '', pairs = [];
+    if (type === 'd3') {
+      title = r.product;
+      sub = r.date + ' · ' + r.line + ' · ' + r.shift;
+      pairs = [
+        ['计划日期', r.date], ['产品', r.product], ['计划数量', r.qty + ' 台'],
+        ['产线', r.line], ['班次', r.shift], ['锁定状态', M.tag(r.status), 'html']
+      ];
+    } else if (type === 'weekly') {
+      title = r.week;
+      sub = '周计划 · 计划 ' + r.plan + ' 台';
+      pairs = [
+        ['计划周期', r.week], ['计划数量', r.plan + ' 台'], ['已完成', r.done + ' 台'],
+        ['达成率', r.rate + '%'], ['状态', M.tag(r.status), 'html']
+      ];
+    } else {
+      title = r.line;
+      sub = '月计划 · 计划 ' + r.plan + ' 台';
+      pairs = [
+        ['产线', r.line], ['月计划', r.plan + ' 台'], ['已完成', r.done + ' 台'],
+        ['达成率', r.rate + '%'], ['状态', M.tag(r.status), 'html']
+      ];
+    }
+
+    M.drawer({
+      title: title,
+      sub: sub,
+      body: '<div id="planDrawerDl" class="mb-16"></div>' +
+        '<div class="divider"></div>' +
+        '<div class="hint mb-8">工单流转</div><div id="planDrawerFlow" class="mb-16"></div>' +
+        '<div class="hint mb-8">计划履历</div><div id="planDrawerTl"></div>',
+      footer: '<button class="btn" data-close>关闭</button><div class="spacer"></div><a class="btn primary" href="production.html">进入生产执行</a>',
+      onMount: function (card) {
+        M.dl(card.querySelector('#planDrawerDl'), pairs);
+        M.opFlow(card.querySelector('#planDrawerFlow'), [
+          { no: 1, name: '计划锁定', meta: 'D+3 锁版', state: 'done' },
+          { no: 2, name: '工单下发', meta: '班次 / 产线', state: 'done' },
+          { no: 3, name: '生产执行', meta: '报工中', state: 'active' },
+          { no: 4, name: '完工入库', meta: '待开始', state: 'todo' }
+        ]);
+        M.timeline(card.querySelector('#planDrawerTl'), [
+          { tone: 'ok', title: '月计划产能平衡通过', time: '10-20 09:30', body: '设备能力 / 人员出勤 / 物料齐套三项校验通过' },
+          { tone: 'ok', title: '周计划 D+7 滚动排程', time: '10-24 16:20', body: '同产品族连续排产，日换型 2 次' },
+          { tone: 'info', title: 'D+3 计划锁版', time: '10-25 08:30', body: '10-26 ~ 10-28 计划锁定，变更需生产经理审批' }
+        ]);
+      }
+    });
+  }
+
+  /* 发布计划 */
+  document.getElementById('btnPublish').addEventListener('click', function () {
+    var body = '<div class="form-grid">' +
+      '<div class="field"><span class="label">发布范围</span><select class="select" id="pubScope">' +
+        '<option value="D+3">D+3 锁定计划（10-26 ~ 10-28）</option>' +
+        '<option value="D+7">D+7 滚动计划（10-26 ~ 11-01）</option>' +
+        '<option value="day">次日日计划（10-26）</option>' +
+      '</select></div>' +
+      '<div class="field"><span class="label">发布日期</span><input class="input" type="date" id="pubDate" value="2026-10-26"></div>' +
+      '<div class="field"><span class="label">发布对象</span><select class="select" id="pubTarget">' +
+        '<option>全部产线</option><option>装配车间</option><option>机加车间</option><option>测试包装车间</option>' +
+      '</select></div>' +
+      '<div class="field"><span class="label">通知方式</span><select class="select" id="pubNotify">' +
+        '<option>系统消息 + 邮件</option><option>仅系统消息</option>' +
+      '</select></div>' +
+      '<div class="field full"><span class="label">备注</span><textarea class="textarea" id="pubNote" placeholder="可选：变更原因 / 审批单号 / 特殊说明"></textarea></div>' +
+    '</div>' +
+    '<div class="note" style="margin-top:12px">发布后计划进入锁定状态，工单对象同步至生产执行与线边物料；D+3 内变更需走审批流程。</div>';
+
+    M.modal({
+      title: '发布计划',
+      wide: true,
+      body: body,
+      footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" id="pubSubmit">确认发布</button>',
+      onMount: function (card, close) {
+        card.querySelector('#pubSubmit').addEventListener('click', function () {
+          var payload = {
+            scope: card.querySelector('#pubScope').value,
+            date: card.querySelector('#pubDate').value,
+            target: card.querySelector('#pubTarget').value,
+            notify: card.querySelector('#pubNotify').value,
+            note: card.querySelector('#pubNote').value
+          };
+          API.publishPlan(payload).then(function () {
+            close();
+            M.toast('D+3 计划已发布，共 4,200 台', 'ok');
+          });
+        });
+      }
+    });
+  });
+
+  /* 导出计划 */
+  var planExportCols = [
+    { key: 'no', label: '工单号' },
+    { key: 'product', label: '产品' },
+    { key: 'qty', label: '数量' },
+    { key: 'line', label: '产线' },
+    { key: 'shift', label: '班次' },
+    { key: 'start', label: '开始时间' },
+    { key: 'end', label: '结束时间' },
+    { key: 'progress', label: '进度(%)' },
+    { key: 'status', label: '状态' }
+  ];
+  document.getElementById('btnExportPlan').addEventListener('click', function () {
+    M.exportCsv('计划排程', planExportCols, P.schedules);
+  });
+});
+</script>
+</body>
+</html>

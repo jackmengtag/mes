@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>车间大屏 · 制造与供应链协同平台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="board">
+
+<aside class="app-nav" id="appNav"></aside>
+<div class="app-body">
+  <header class="app-topbar" id="appTopbar"></header>
+  <main class="app-content">
+    <div class="page-head">
+      <div>
+        <div class="page-title">车间大屏</div>
+        <div class="page-sub">爱达兴 · 高铂尔制造基地 · 白班实时</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="page-actions">
+        <span class="mono sub" id="screenClock">--:--:--</span>
+        <button class="btn" id="btnFullscreen"></button>
+        <button class="btn primary" id="btnRefresh"></button>
+      </div>
+    </div>
+
+    <div id="ledBoard" class="mb-16"></div>
+
+    <section class="dark-board mb-16" id="boardMetrics" style="--text:#E6F0F4;--text-sub:#A9C6D3;--text-mute:#7FA0AF;--border-strong:#2A4E5D;--primary:#5FA8C7;--success:#4FC08D;--danger:#FF8A7C">
+      <div class="between mb-12">
+        <div>
+          <div class="card-title" id="metricTitle" style="color:#fff"></div>
+          <div class="db-sub" id="metricSub">白班 08:00-20:00</div>
+        </div>
+        <span class="tag info">实时采集</span>
+      </div>
+      <div id="boardKpi" class="grid-4"></div>
+    </section>
+
+    <div class="grid-2-1 mb-16">
+      <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+        <section class="card">
+          <div class="card-head">
+            <div class="card-title" id="kanbanTitle"></div>
+            <div class="spacer"></div>
+            <span class="tag mute">4 个状态</span>
+            <a class="btn sm ghost" href="production.html">生产执行›</a>
+          </div>
+          <div class="card-body">
+            <div class="scroll-x"><div id="board"></div></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <div class="card-title" id="downtimeTitle"></div>
+            <div class="spacer"></div>
+            <span class="tag warn" id="dtTotal">—</span>
+          </div>
+          <div class="card-body tight" id="downtimeTable"></div>
+        </section>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+        <section class="dark-board" id="alertBoard" style="--text:#E6F0F4;--text-sub:#A9C6D3;--text-mute:#7FA0AF;--border-strong:#2A4E5D;--primary:#5FA8C7;--success:#4FC08D;--danger:#FF8A7C">
+          <div class="between mb-12">
+            <div>
+              <div class="card-title" id="alertTitle" style="color:#fff"></div>
+              <div class="db-sub">当班未闭环 3 项 · 按时间倒序</div>
+            </div>
+            <span class="tag danger" style="color:#B23A2E">3 项</span>
+          </div>
+          <div id="alertTimeline"></div>
+        </section>
+
+        <div id="cadenceBoard"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="assets/mock.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var M = MESUI;
+  var d = DB.board;
+
+  var KPI = [
+    { label: '当班产出', value: '1,284', unit: '台', delta: '+3.2%', trend: 'up', tone: 'ok', icon: 'box', foot: '计划 1,400 · 缺口 116 台' },
+    { label: '计划达成', value: '91.7', unit: '%', delta: '+1.4%', trend: 'up', tone: 'ok', icon: 'target', foot: '目标 ≥ 92%' },
+    { label: '在制 WIP', value: '386', unit: '台', tone: 'warn', icon: 'layers', foot: '安全水位 ≤ 420 台' },
+    { label: '异常', value: '3', unit: '项', tone: 'danger', icon: 'alert', foot: '严重 1 · 一般 2' }
+  ];
+
+  /* 页头按钮与卡片标题 */
+  document.getElementById('btnFullscreen').innerHTML = M.icon('screen') + '全屏';
+  document.getElementById('btnRefresh').innerHTML = M.icon('refresh') + '刷新';
+  document.getElementById('metricTitle').innerHTML = M.icon('gauge') + '当班核心指标';
+  document.getElementById('kanbanTitle').innerHTML = M.icon('clipboard') + '工单看板 · 当班';
+  document.getElementById('downtimeTitle').innerHTML = M.icon('clock') + '停机 Top';
+  document.getElementById('alertTitle').innerHTML = M.icon('alert') + '异常与预警';
+
+  /* LED 看板 + 深色指标 */
+  function renderMetrics() {
+    M.ledBoard('#ledBoard', d.led, '2026-10-25 12:00');
+    M.kpi('#boardKpi', KPI);
+    document.getElementById('metricSub').textContent = '白班 08:00-20:00 · 最近刷新 ' + M.now();
+  }
+  renderMetrics();
+
+  /* 工单看板（点击卡片查看详情） */
+  function renderKanban() {
+    M.kanban('#board', d.kanban);
+    var cols = M.refs.$$('#board .board-col');
+    cols.forEach(function (col, i) {
+      var column = d.kanban[i];
+      if (!column) return;
+      M.refs.$$('.board-card', col).forEach(function (card, j) {
+        var item = column.cards[j];
+        if (!item) return;
+        card.addEventListener('click', function () { openCard(column.title, item); });
+      });
+    });
+  }
+
+  function openCard(status, item) {
+    M.drawer({
+      title: item.no + ' · ' + item.name,
+      sub: '工单状态：' + status,
+      body: '<div class="dl mb-16" data-card-dl></div>' +
+        '<div class="note">大屏仅展示当班关键工单，完整工序进度与报工记录请进入生产执行查看。</div>',
+      footer: '<button class="btn" data-close>关闭</button><div class="spacer"></div><a class="btn primary" href="production.html">查看生产执行</a>',
+      onMount: function (el) {
+        M.dl(el.querySelector('[data-card-dl]'), [
+          ['工单号', item.no],
+          ['产品 / 数量', item.name],
+          ['产线', (item.meta && item.meta[0]) || '—'],
+          ['进度 / 交期', (item.meta && item.meta[1]) || '—'],
+          ['当前状态', M.tag(status), 'html']
+        ]);
+      }
+    });
+  }
+  renderKanban();
+
+  function fitKanban() {
+    var b = document.getElementById('board');
+    if (!b) return;
+    b.style.gridTemplateColumns = window.innerWidth > 900 ? 'repeat(4,minmax(0,1fr))' : '';
+  }
+  window.addEventListener('resize', fitKanban);
+  fitKanban();
+
+  /* 停机 Top */
+  var dtCols = [
+    { key: 'eq', label: '设备/工位' },
+    { key: 'start', label: '开始', cls: 'mono' },
+    { key: 'duration', label: '时长(min)', cls: 'num' },
+    { key: 'reason', label: '原因' }
+  ];
+  M.table({ mount: '#downtimeTable', columns: dtCols, rows: d.downtime, pageSize: 4, search: false, exportName: '停机 Top' });
+  var dtTotal = d.downtime.reduce(function (s, x) { return s + x.duration; }, 0);
+  document.getElementById('dtTotal').textContent = dtTotal.toFixed(1) + ' min';
+
+  /* 异常与节拍 */
+  M.timeline('#alertTimeline', d.alerts);
+  M.ledBoard('#cadenceBoard', [
+    { k: '当前节拍', v: '42.5s' },
+    { k: '目标', v: '45s', tone: 'amber' },
+    { k: '达成', v: '106%' }
+  ]);
+
+  /* 全屏 */
+  var fsBtn = document.getElementById('btnFullscreen');
+  function syncFullscreen() {
+    var on = !!document.fullscreenElement;
+    fsBtn.innerHTML = M.icon(on ? 'x' : 'screen') + (on ? '退出全屏' : '全屏');
+  }
+  fsBtn.addEventListener('click', function () {
+    try {
+      if (document.fullscreenElement) {
+        if (document.exitFullscreen) document.exitFullscreen();
+      } else if (document.documentElement.requestFullscreen) {
+        var p = document.documentElement.requestFullscreen();
+        if (p && p.catch) p.catch(function () { M.toast('当前浏览器不允许全屏显示', 'warn'); });
+      } else {
+        M.toast('当前浏览器不支持全屏显示', 'warn');
+      }
+    } catch (e) {
+      M.toast('当前浏览器不支持全屏显示', 'warn');
+    }
+  });
+  document.addEventListener('fullscreenchange', syncFullscreen);
+  syncFullscreen();
+
+  /* 刷新 */
+  document.getElementById('btnRefresh').addEventListener('click', function () {
+    var btn = this;
+    btn.disabled = true;
+    renderMetrics();
+    M.toast('大屏数据已刷新 · ' + M.now(), 'ok');
+    setTimeout(function () { btn.disabled = false; }, 400);
+  });
+
+  /* 时间水印 */
+  function tickClock() {
+    var el = document.getElementById('screenClock');
+    if (el) el.textContent = M.now();
+  }
+  tickClock();
+  M.live(tickClock, 30000);
+});
+</script>
+</body>
+</html>

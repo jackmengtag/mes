@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>线边物料 · 制造与供应链协同平台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="material">
+
+<aside class="app-nav" id="appNav"></aside>
+<div class="app-body">
+  <header class="app-topbar" id="appTopbar"></header>
+
+  <main class="app-content">
+    <div class="page-head">
+      <div>
+        <div class="page-title">线边物料</div>
+        <div class="page-sub">库存 · 齐套 · 拉动 · 缺料预警</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="page-actions">
+        <button class="btn" id="btnExportInv"></button>
+        <button class="btn primary" id="btnNewPull"></button>
+      </div>
+    </div>
+
+    <div id="kpiGrid" class="grid-4 stagger mb-16"></div>
+
+    <div class="grid-3 mb-16" id="warehouseGrid"></div>
+
+    <div class="grid-2-1 mb-16">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="invTitle"></div>
+          <div class="spacer"></div>
+          <span class="tag danger">缺料 1 项</span>
+          <a class="btn sm ghost" href="inventory.html">库存管理›</a>
+          <a class="btn sm ghost" href="masterdata.html">物料主数据›</a>
+        </div>
+        <div class="card-body tight" id="invTable"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="kitTitle"></div>
+          <div class="spacer"></div>
+          <span class="tag warn">目标 ≥ 95%</span>
+        </div>
+        <div class="card-body">
+          <div class="meter-row mb-12">
+            <span class="meter-label">整体齐套率</span>
+            <div class="progress lg"><div class="progress-bar warn" style="width:90%"></div></div>
+            <span class="meter-val">90%</span>
+          </div>
+          <div class="divider"></div>
+          <div id="kitBars"></div>
+          <div class="divider"></div>
+          <div class="note warn"><b>缺料预警</b>：定子铁芯库存 1,240 件，安全库存 2,000 件，缺口 760 件；在途 4,000 件预计 14:30 到货。编码器库存 820 件低于安全库存 900 件，已创建拉动单 PL-261025-011。</div>
+        </div>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="card-head">
+        <div class="card-title" id="pullTitle"></div>
+        <span class="card-sub">按创建时间倒序</span>
+        <div class="spacer"></div>
+        <span class="tag info">WMS 同步</span>
+      </div>
+      <div class="card-body tight" id="pullTable"></div>
+    </section>
+  </main>
+</div>
+
+<script src="assets/mock.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var M = MESUI;
+  var D = DB.material;
+
+  document.getElementById('btnNewPull').innerHTML = M.icon('plus') + '新建拉动单';
+  document.getElementById('btnExportInv').innerHTML = M.icon('download') + '导出库存';
+  document.getElementById('invTitle').innerHTML = M.icon('package') + '库存台账';
+  document.getElementById('kitTitle').innerHTML = M.icon('target') + '齐套分析';
+  document.getElementById('pullTitle').innerHTML = M.icon('truck') + '拉动单';
+
+  /* KPI */
+  M.kpi('#kpiGrid', D.kpis);
+
+  /* 库房卡 */
+  document.getElementById('warehouseGrid').innerHTML = D.warehouses.map(function (w) {
+    var pct = Math.round(w.used / w.locations * 100);
+    var tone = w.tone || (w.alert ? 'warn' : 'ok');
+    var headTag = M.tag(w.alert ? '预警' : '正常', tone);
+    var alertTag = w.alert ? M.tag(w.alert + ' 项待处理', 'warn') : M.tag('无预警', 'ok');
+    return '<section class="card">' +
+      '<div class="card-head"><div class="card-title">' + M.icon('warehouse') + M.esc(w.name) + '</div>' +
+        '<div class="spacer"></div>' + headTag + '</div>' +
+      '<div class="card-body">' +
+        '<div class="hint mb-8">' + M.esc(w.meta) + '</div>' +
+        '<div class="meter-row mb-12"><span class="meter-label">库位占用</span>' +
+          M.progress(pct, pct >= 90 ? 'warn' : 'ok') +
+          '<span class="meter-val">' + pct + '%</span></div>' +
+        '<div class="between"><span class="hint">占用库位</span><span class="mono">' + w.used + ' / ' + w.locations + '</span></div>' +
+        '<div class="between mt-8"><span class="hint">库存金额</span><span class="mono">' + M.esc(w.value) + '</span></div>' +
+        '<div class="between mt-8"><span class="hint">缺料预警</span>' + alertTag + '</div>' +
+      '</div>' +
+    '</section>';
+  }).join('');
+
+  /* 库存台账 */
+  var invCols = [
+    { key: 'code', label: '物料编码', cls: 'mono' },
+    { key: 'name', label: '名称' },
+    { key: 'loc', label: '库位', cls: 'mono' },
+    { key: 'stock', label: '库存', cls: 'num' },
+    { key: 'safe', label: '安全库存', cls: 'num' },
+    { key: 'incoming', label: '在途', cls: 'num' },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } },
+    { key: 'updated', label: '更新时间', cls: 'mono' }
+  ];
+  M.table({
+    mount: '#invTable', columns: invCols, rows: D.inventory, pageSize: 8,
+    exportName: '线边库存', searchPlaceholder: '搜索物料编码 / 名称 / 库位',
+    rowClass: function (r) { return r.status === '缺料' ? 'row-danger' : r.status === '预警' ? 'row-warn' : ''; },
+    onRowClick: function (r) { openMaterial(r); }
+  });
+
+  /* 齐套 */
+  M.bars('#kitBars', D.kitting, { unit: '%', max: 100 });
+
+  /* 拉动单 */
+  var pullCols = [
+    { key: 'no', label: '单号', cls: 'mono' },
+    { key: 'material', label: '物料' },
+    { key: 'qty', label: '数量', cls: 'num' },
+    { key: 'route', label: '路线' },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } },
+    { key: 'time', label: '时间', cls: 'mono' },
+    { label: '操作', sortable: false, formatter: function () { return '<button class="btn sm ghost" data-act="view">查看</button>'; } }
+  ];
+  var pullTable = M.table({
+    mount: '#pullTable', columns: pullCols, rows: D.pullings, pageSize: 6,
+    exportName: '拉动单', searchPlaceholder: '搜索单号 / 物料 / 路线',
+    onRowClick: function (r) { openPulling(r); },
+    onAction: function (act, r) { if (r) openPulling(r); }
+  });
+
+  /* 库存抽屉 */
+  function openMaterial(r) {
+    var gap = r.safe - r.stock;
+    var note = gap > 0
+      ? '<div class="note warn"><b>安全库存说明</b>：安全库存 ' + r.safe + ' 件，当前库存 ' + r.stock + ' 件，缺口 ' + gap + ' 件；在途 ' + r.incoming + ' 件，建议按日计划立即拉动。</div>'
+      : '<div class="note"><b>安全库存说明</b>：安全库存 ' + r.safe + ' 件，当前库存 ' + r.stock + ' 件，水位正常；在途 ' + r.incoming + ' 件。</div>';
+
+    M.drawer({
+      title: r.name,
+      sub: r.code + ' · ' + r.loc + ' · ' + r.updated + ' 更新',
+      body: '<div id="matDl" class="mb-16"></div>' +
+        '<div class="divider"></div>' + note +
+        '<div class="divider"></div>' +
+        '<div class="hint mb-8">近 5 次出入库</div><div id="matTl"></div>',
+      footer: '<button class="btn" data-close>关闭</button><div class="spacer"></div><button class="btn primary" id="matPull">新建拉动单</button>',
+      onMount: function (card, close) {
+        M.dl(card.querySelector('#matDl'), [
+          ['物料编码', r.code], ['名称', r.name], ['库位', r.loc],
+          ['当前库存', r.stock + ' 件'], ['安全库存', r.safe + ' 件'],
+          ['在途', r.incoming + ' 件'], ['状态', M.tag(r.status), 'html'],
+          ['更新时间', r.updated]
+        ]);
+        M.timeline(card.querySelector('#matTl'), [
+          { tone: 'ok', title: '入库 1,200 件', time: '11:35', body: '采购到货 · 原料库 A → ' + r.loc },
+          { tone: 'ok', title: '出库 320 件', time: '10:20', body: 'AS-02 装配二线领用 · 工单 WO-261025-004' },
+          { tone: gap > 0 ? 'warn' : 'info', title: gap > 0 ? '库存低于安全库存' : '库存水位校验', time: '09:58', body: gap > 0 ? '触发缺料预警，已推送物料员与计划员' : '库存高于安全库存，无需拉动' },
+          { tone: 'ok', title: '出库 480 件', time: '08:55', body: 'AS-01 装配一线领用 · 工单 WO-261025-003' },
+          { tone: 'info', title: '盘点完成', time: '昨日 18:20', body: '账实一致 · 盘点人 王芳' }
+        ]);
+        card.querySelector('#matPull').addEventListener('click', function () {
+          close();
+          openNewPulling(r.code);
+        });
+      }
+    });
+  }
+
+  /* 拉动单抽屉 */
+  function openPulling(r) {
+    var picked = r.status !== '待拣货';
+    var shipping = r.status === '配送中';
+    var stored = r.status === '已入库';
+    M.drawer({
+      title: r.no,
+      sub: r.material + ' · ' + r.route,
+      body: '<div id="pullDl" class="mb-16"></div>' +
+        (r.status === '异常' ? '<div class="note danger mb-12"><b>异常提示</b>：WMS 反馈目标库位已满，拉动单已挂起，请联系库管调整库位后重新推送。</div>' : '') +
+        '<div class="divider"></div>' +
+        '<div class="hint mb-8">拉动流程</div><div id="pullFlow"></div>',
+      footer: '<button class="btn" data-close>关闭</button><div class="spacer"></div>' +
+        (stored ? '' : '<button class="btn primary" id="pullConfirm">确认收货</button>'),
+      onMount: function (card, close) {
+        M.dl(card.querySelector('#pullDl'), [
+          ['单号', r.no], ['物料', r.material], ['数量', r.qty + ' 件'],
+          ['路线', r.route], ['状态', M.tag(r.status), 'html'], ['创建时间', r.time]
+        ]);
+        M.opFlow(card.querySelector('#pullFlow'), [
+          { no: 1, name: '创建', meta: r.time, state: 'done' },
+          { no: 2, name: '拣货', meta: picked ? '已完成' : '待拣货', state: picked ? 'done' : 'active' },
+          { no: 3, name: '配送', meta: stored ? '已完成' : shipping ? '配送中' : '待开始', state: stored ? 'done' : shipping ? 'active' : 'todo' },
+          { no: 4, name: '入库', meta: stored ? '已完成' : '待收货', state: stored ? 'done' : 'todo' }
+        ]);
+        var btn = card.querySelector('#pullConfirm');
+        if (btn) btn.addEventListener('click', function () {
+          close();
+          M.toast('拉动单 ' + r.no + ' 已确认收货', 'ok');
+        });
+      }
+    });
+  }
+
+  /* 新建拉动单 */
+  function openNewPulling(presetCode) {
+    var options = D.inventory.map(function (m) {
+      return '<option value="' + M.esc(m.code) + '"' + (m.code === presetCode ? ' selected' : '') + '>' +
+        M.esc(m.code) + ' · ' + M.esc(m.name) + '（库存 ' + m.stock + '）</option>';
+    }).join('');
+
+    var body = '<div class="form-grid">' +
+      '<div class="field full"><span class="label">物料</span><select class="select" id="plMaterial">' + options + '</select></div>' +
+      '<div class="field"><span class="label">拉动数量</span><input class="input" id="plQty" type="number" min="1" value="1000"></div>' +
+      '<div class="field"><span class="label">需求产线</span><select class="select" id="plLine">' +
+        '<option>AS-01 装配一线</option><option>AS-02 装配二线</option><option>MC-01 机加一线</option><option>MC-02 机加二线</option>' +
+      '</select></div>' +
+      '<div class="field"><span class="label">从</span><select class="select" id="plFrom">' +
+        '<option>原料库 A</option><option>成品库 F</option>' +
+      '</select></div>' +
+      '<div class="field"><span class="label">到</span><select class="select" id="plTo">' +
+        '<option>AS 线边</option><option>F 成品库</option>' +
+      '</select></div>' +
+      '<div class="field full"><span class="label">备注</span><textarea class="textarea" id="plNote" placeholder="可选：缺料工单 / 紧急程度 / 需求时点"></textarea></div>' +
+    '</div>' +
+    '<div class="note" style="margin-top:12px">提交后生成拉动单并推送 WMS，状态为「待拣货」；拣货完成后转「配送中」，线边收货后回写库存。</div>';
+
+    M.modal({
+      title: '新建拉动单',
+      wide: true,
+      body: body,
+      footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" id="plSubmit">提交拉动单</button>',
+      onMount: function (card, close) {
+        card.querySelector('#plSubmit').addEventListener('click', function () {
+          var qty = Number(card.querySelector('#plQty').value) || 0;
+          if (!qty) { M.toast('请填写拉动数量', 'warn'); return; }
+          var code = card.querySelector('#plMaterial').value;
+          var item = D.inventory.filter(function (x) { return x.code === code; })[0];
+          var from = card.querySelector('#plFrom').value;
+          var to = card.querySelector('#plTo').value;
+          API.createPulling({
+            material: item ? item.name : code,
+            code: code,
+            qty: qty,
+            from: from,
+            to: to,
+            route: from + ' → ' + to,
+            line: card.querySelector('#plLine').value,
+            note: card.querySelector('#plNote').value
+          }).then(function () {
+            D.pullings.unshift({
+              no: 'PL-261025-013', material: item ? item.name : code, qty: qty,
+              route: from + ' → ' + to, status: '待拣货', time: M.now().slice(0, 5)
+            });
+            MES.save();
+            pullTable.refresh(D.pullings);
+            close();
+            M.toast('拉动单 PL-261025-013 已创建，状态：待拣货', 'ok');
+          });
+        });
+      }
+    });
+  }
+
+  document.getElementById('btnNewPull').addEventListener('click', function () { openNewPulling(); });
+  document.getElementById('btnExportInv').addEventListener('click', function () {
+    M.exportCsv('线边库存', invCols, D.inventory);
+  });
+});
+</script>
+</body>
+</html>

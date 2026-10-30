@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>质量管理 · 制造与供应链协同平台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="quality">
+
+<aside class="app-nav" id="appNav"></aside>
+<div class="app-body">
+  <header class="app-topbar" id="appTopbar"></header>
+
+  <main class="app-content">
+    <div class="page-head">
+      <div>
+        <div class="page-title">质量管理</div>
+        <div class="page-sub">检验 · 缺陷 · 不合格品处置 · DPU</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="page-actions">
+        <button class="btn" id="btnExportQuality"></button>
+        <button class="btn primary" id="btnNewInsp"></button>
+      </div>
+    </div>
+
+    <div id="kpiGrid" class="grid-4 stagger mb-16"></div>
+
+    <section class="card mb-16">
+      <div class="card-head">
+        <div class="card-title" id="ncFlowTitle"></div>
+        <span class="card-sub">不合格品从发现到放行的闭环节点</span>
+        <div class="spacer"></div>
+        <span class="tag warn">待评审 1 项</span>
+      </div>
+      <div class="card-body">
+        <div id="ncFlow"></div>
+        <div class="divider"></div>
+        <div class="note warn"><b>当前阻塞</b>：NC-261025-01（SD-500 / B261025-03，8 台）绝缘电阻不合格，等待质量工程师完成评审并确定处置方式。</div>
+      </div>
+    </section>
+
+    <div class="grid-2 mb-16">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="defectTitle"></div>
+          <div class="spacer"></div>
+          <span class="tag outline">当班 · 件</span>
+        </div>
+        <div class="card-body">
+          <div id="defectBars"></div>
+          <div class="hint mt-12">装配间隙 38 件（占 33.9%）为首要缺陷来源，建议联动装配一组复核压装工装与端盖定位基准。</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="dpuTitle"></div>
+          <div class="spacer"></div>
+          <span class="tag warn">目标 ≤ 0.03</span>
+        </div>
+        <div class="card-body">
+          <div id="dpuBars"></div>
+          <div class="hint mt-12">AS-02 线 DPU 0.036 高于目标值，主要来自 OP50 拧紧扭矩超差；其余产线均处于受控范围。</div>
+        </div>
+      </section>
+    </div>
+
+    <section class="card mb-16">
+      <div class="card-head">
+        <div class="card-title" id="inspTitle"></div>
+        <span class="card-sub">按检验类型筛选，支持导出当前页签</span>
+        <div class="spacer"></div>
+        <span class="tag ok" id="inspSummary"></span>
+      </div>
+      <div class="card-body tight">
+        <div class="tabs" data-tabs id="inspTabs" style="padding:0 14px">
+          <button class="tab active" data-tab="all">全部</button>
+          <button class="tab" data-tab="first">首检</button>
+          <button class="tab" data-tab="patrol">巡检</button>
+          <button class="tab" data-tab="final">终检</button>
+        </div>
+        <div class="tab-panel" data-panel="all"><div id="inspAll"></div></div>
+        <div class="tab-panel hidden" data-panel="first"><div id="inspFirst"></div></div>
+        <div class="tab-panel hidden" data-panel="patrol"><div id="inspPatrol"></div></div>
+        <div class="tab-panel hidden" data-panel="final"><div id="inspFinal"></div></div>
+      </div>
+    </section>
+
+    <div class="grid-2">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="issueTitle"></div>
+          <div class="spacer"></div>
+          <span class="tag danger" id="issueSevere"></span>
+        </div>
+        <div class="card-body tight" id="issueTable"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="ncListTitle"></div>
+          <div class="spacer"></div>
+          <span class="tag warn" id="ncPending"></span>
+        </div>
+        <div class="card-body tight" id="ncTable"></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="assets/mock.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var M = MESUI;
+  var Q = DB.quality;
+
+  document.getElementById('btnExportQuality').innerHTML = M.icon('download') + '导出质量报表';
+  document.getElementById('btnNewInsp').innerHTML = M.icon('plus') + '新建检验单';
+
+  document.getElementById('ncFlowTitle').innerHTML = M.icon('shield') + '不合格品处置 · 5 步闭环';
+  document.getElementById('defectTitle').innerHTML = M.icon('chart') + '缺陷 Pareto · 当班';
+  document.getElementById('dpuTitle').innerHTML = M.icon('activity') + '各产线 DPU';
+  document.getElementById('inspTitle').innerHTML = M.icon('clipboard') + '检验任务';
+  document.getElementById('issueTitle').innerHTML = M.icon('alert') + '质量问题';
+  document.getElementById('ncListTitle').innerHTML = M.icon('fileText') + '不合格品台账';
+
+  /* KPI 与处置流程 */
+  M.kpi('#kpiGrid', Q.kpis, 4);
+  M.opFlow('#ncFlow', Q.ncFlow);
+
+  /* 缺陷 Pareto */
+  M.bars('#defectBars', Q.defects.map(function (r, i) {
+    return { name: r.name, v: r.v, tone: i === 0 ? 'accent' : '' };
+  }), { max: 40, unit: ' 件' });
+
+  /* 各产线 DPU：三位小数，超目标用 accent */
+  M.bars('#dpuBars', Q.dpu.map(function (r) {
+    var v = Number(r.v);
+    return { name: r.name, v: v.toFixed(3), tone: v > 0.03 ? 'accent' : '' };
+  }), { max: 0.04 });
+
+  /* 检验任务 */
+  var inspCols = [
+    { key: 'no', label: '检验单号', cls: 'mono' },
+    { key: 'type', label: '类型', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.type) + '</span>'; } },
+    { key: 'object', label: '对象' },
+    { key: 'sample', label: '样本', cls: 'num' },
+    { key: 'ok', label: '合格', cls: 'num' },
+    { key: 'ng', label: '不良', cls: 'num', formatter: function (r) {
+      return r.ng > 0 ? '<span class="mono" style="color:var(--danger)">' + r.ng + '</span>' : '<span class="mono">0</span>';
+    } },
+    { key: 'inspector', label: '检验员' },
+    { key: 'time', label: '时间', cls: 'mono' },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } }
+  ];
+  var INSP_TYPES = { first: '首检', patrol: '巡检', final: '终检' };
+  var INSP_MOUNTS = { all: '#inspAll', first: '#inspFirst', patrol: '#inspPatrol', final: '#inspFinal' };
+
+  function renderInsp(key) {
+    var type = INSP_TYPES[key];
+    var rows = type ? Q.inspections.filter(function (r) { return r.type === type; }) : Q.inspections;
+    M.table({
+      mount: INSP_MOUNTS[key],
+      columns: inspCols,
+      rows: rows,
+      pageSize: 6,
+      exportName: '检验任务-' + (type || '全部'),
+      empty: '该类型暂无检验任务'
+    });
+  }
+  Object.keys(INSP_MOUNTS).forEach(function (k) { renderInsp(k); });
+  var okCount = Q.inspections.filter(function (r) { return r.status === '合格'; }).length;
+  document.getElementById('inspSummary').textContent = '合格 ' + okCount + ' · 异常 ' + (Q.inspections.length - okCount);
+  M.bindTabs(document);
+  document.querySelectorAll('#inspTabs .tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      renderInsp(tab.getAttribute('data-tab'));
+    });
+  });
+
+  /* 质量问题 */
+  var LEVEL_TONE = { '严重': 'danger', '一般': 'warn', '轻微': 'mute' };
+  var issueCols = [
+    { key: 'no', label: '问题单号', cls: 'mono' },
+    { key: 'time', label: '时间', cls: 'mono' },
+    { key: 'source', label: '来源' },
+    { key: 'product', label: '产品' },
+    { key: 'defect', label: '缺陷描述' },
+    { key: 'level', label: '等级', formatter: function (r) { return M.tag(r.level, LEVEL_TONE[r.level]); } },
+    { key: 'owner', label: '责任单位' },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } }
+  ];
+
+  function renderIssues() {
+    M.table({
+      mount: '#issueTable',
+      columns: issueCols,
+      rows: Q.issues,
+      pageSize: 6,
+      exportName: '质量问题',
+      onRowClick: openIssue
+    });
+    document.getElementById('issueSevere').textContent = '严重 ' + Q.issues.filter(function (r) { return r.level === '严重'; }).length;
+  }
+
+  function openIssue(row) {
+    M.drawer({
+      title: row.no,
+      sub: row.source + ' · ' + row.product + ' · ' + row.time,
+      body: '<div id="issueDl" class="mb-16"></div>' +
+        '<div class="divider"></div>' +
+        '<div class="hint mb-8">处置时间线</div>' +
+        '<div id="issueTl"></div>',
+      footer: '<button class="btn" data-close>关闭</button><div style="flex:1"></div><button class="btn primary" id="issueJudge">判定</button>',
+      onMount: function (card, close) {
+        M.dl(card.querySelector('#issueDl'), [
+          ['问题单号', row.no], ['发现时间', row.time], ['来源', row.source],
+          ['产品', row.product], ['缺陷描述', row.defect],
+          ['等级', M.tag(row.level, LEVEL_TONE[row.level]), 'html'],
+          ['责任单位', row.owner], ['状态', M.tag(row.status), 'html']
+        ]);
+        M.timeline(card.querySelector('#issueTl'), [
+          { tone: 'danger', title: '问题登记 · ' + row.source, time: row.time, body: M.esc(row.product) + ' · ' + M.esc(row.defect) + ' · 责任单位 ' + M.esc(row.owner) },
+          { tone: 'warn', title: '临时遏制', time: '10:20', body: '隔离可疑在制品 6 台，通知工艺与设备到场确认' },
+          { tone: row.status === '已关闭' ? 'ok' : 'info', title: '当前状态 · ' + row.status, time: row.status === '已关闭' ? '11:55' : '进行中', body: '处置责任人：' + M.esc(row.owner) + ' · 需在当班内完成闭环' }
+        ]);
+        card.querySelector('#issueJudge').addEventListener('click', function () {
+          close();
+          openIssueJudge(row);
+        });
+      }
+    });
+  }
+
+  function openIssueJudge(row) {
+    var radios = ['返工', '让步接收', '报废'].map(function (x, i) {
+      return '<label class="check"><input type="radio" name="issueDisp" value="' + x + '"' + (i === 0 ? ' checked' : '') + '>' + x + '</label>';
+    }).join('');
+    M.modal({
+      title: '质量问题判定',
+      body: '<div class="dl mb-16" style="grid-template-columns:96px 1fr">' +
+          '<dt>问题单号</dt><dd class="mono">' + M.esc(row.no) + '</dd>' +
+          '<dt>缺陷描述</dt><dd>' + M.esc(row.defect) + '</dd>' +
+          '<dt>等级 / 产品</dt><dd>' + M.esc(row.level) + ' · ' + M.esc(row.product) + '</dd>' +
+        '</div>' +
+        '<div class="field mb-12"><span class="label">处置方式</span>' +
+          '<div class="flex gap-16 wrap">' + radios + '</div>' +
+        '</div>' +
+        '<div class="field"><span class="label">评审意见</span><textarea class="textarea" id="issueNote" placeholder="说明判定依据、返工要求或让步条件"></textarea></div>',
+      footer: '<div style="flex:1"></div><button class="btn" data-close>取消</button><button class="btn primary" id="issueSubmit">提交判定</button>',
+      onMount: function (card, close) {
+        card.querySelector('#issueSubmit').addEventListener('click', function () {
+          var picked = card.querySelector('input[name="issueDisp"]:checked').value;
+          close();
+          row.status = picked === '报废' ? '已关闭' : '处理中';
+          MES.save();
+          M.toast(row.no + ' 已判定，处置：' + picked, 'ok');
+          renderIssues();
+        });
+      }
+    });
+  }
+
+  renderIssues();
+
+  /* 不合格品台账 */
+  var ncRows = Q.ncList.slice();
+  var ncCols = [
+    { key: 'no', label: '单号', cls: 'mono' },
+    { key: 'batch', label: '批次', cls: 'mono' },
+    { key: 'product', label: '产品' },
+    { key: 'qty', label: '数量', cls: 'num' },
+    { key: 'defect', label: '缺陷' },
+    { key: 'disposition', label: '处置', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.disposition) + '</span>'; } },
+    { key: 'owner', label: '责任人' },
+    { key: 'status', label: '状态', formatter: function (r) { return M.tag(r.status); } },
+    { key: 'act', label: '操作', sortable: false, formatter: function () { return '<button class="btn sm" data-act="judge">判定</button>'; } }
+  ];
+
+  function renderNc() {
+    M.table({
+      mount: '#ncTable',
+      columns: ncCols,
+      rows: ncRows,
+      pageSize: 5,
+      exportName: '不合格品台账',
+      onAction: function (act, row) { if (act === 'judge') openNcJudge(row); }
+    });
+    document.getElementById('ncPending').textContent = '待评审 ' + ncRows.filter(function (r) { return r.status === '待评审'; }).length;
+  }
+
+  function openNcJudge(row) {
+    var radios = ['返工', '让步接收', '报废'].map(function (x) {
+      return '<label class="check"><input type="radio" name="ncDisp" value="' + x + '"' + (row.disposition === x ? ' checked' : '') + '>' + x + '</label>';
+    }).join('');
+    M.modal({
+      title: '不合格品判定',
+      body: '<div class="dl mb-16" style="grid-template-columns:96px 1fr">' +
+          '<dt>不合格单</dt><dd class="mono">' + M.esc(row.no) + '</dd>' +
+          '<dt>批次 / 产品</dt><dd>' + M.esc(row.batch) + ' · ' + M.esc(row.product) + '</dd>' +
+          '<dt>数量 / 缺陷</dt><dd>' + row.qty + ' 件 · ' + M.esc(row.defect) + '</dd>' +
+        '</div>' +
+        '<div class="field mb-12"><span class="label">处置方式</span>' +
+          '<div class="flex gap-16 wrap">' + radios + '</div>' +
+        '</div>' +
+        '<div class="field"><span class="label">评审意见</span><textarea class="textarea" id="ncNote" placeholder="说明判定依据、返工要求或让步条件"></textarea></div>' +
+        '<div class="note" style="margin-top:12px">提交后写入评审记录，不合格品推进至「待放行」，并同步更新质量追溯档案。</div>',
+      footer: '<div style="flex:1"></div><button class="btn" data-close>取消</button><button class="btn primary" id="ncSubmit">提交评审</button>',
+      onMount: function (card, close) {
+        card.querySelector('#ncSubmit').addEventListener('click', function () {
+          var picked = card.querySelector('input[name="ncDisp"]:checked').value;
+          var note = card.querySelector('#ncNote').value.trim();
+          API.judgeNonconformity({ no: row.no, disposition: picked, note: note }).then(function () {
+            close();
+            row.disposition = picked;
+            row.status = '待放行';
+            MES.save();
+            M.toast(row.no + ' 已完成评审，处置：' + picked, 'ok');
+            renderNc();
+          });
+        });
+      }
+    });
+  }
+
+  renderNc();
+
+  /* 新建检验单 */
+  document.getElementById('btnNewInsp').addEventListener('click', function () {
+    var batches = ['B261025-01', 'B261025-02', 'B261025-03', 'B261025-04', 'B261025-05'];
+    M.modal({
+      title: '新建检验单',
+      body: '<div class="form-grid">' +
+          '<div class="field"><span class="label">检验类型</span><select class="select" id="qcType">' +
+            ['首检', '巡检', '终检'].map(function (x) { return '<option>' + x + '</option>'; }).join('') +
+          '</select></div>' +
+          '<div class="field"><span class="label">产品批次</span><select class="select" id="qcBatch">' +
+            batches.map(function (x) { return '<option>' + x + '</option>'; }).join('') +
+          '</select></div>' +
+          '<div class="field"><span class="label">抽样数</span><input class="input" id="qcSample" type="number" value="20" min="1"></div>' +
+          '<div class="field"><span class="label">检验员</span><select class="select" id="qcInspector">' +
+            ['刘洋', '何静', '王芳'].map(function (x) { return '<option>' + x + '</option>'; }).join('') +
+          '</select></div>' +
+        '</div>' +
+        '<div class="note" style="margin-top:12px">按抽样方案自动生成检验项；不良数 &gt; 0 时同步生成质量问题与不合格品记录。</div>',
+      footer: '<div style="flex:1"></div><button class="btn" data-close>取消</button><button class="btn primary" id="qcSubmit">创建检验单</button>',
+      onMount: function (card, close) {
+        card.querySelector('#qcSubmit').addEventListener('click', function () {
+          var sample = Number(card.querySelector('#qcSample').value) || 0;
+          if (sample <= 0) { M.invalid(card.querySelector('#qcSample'), '抽样数需大于 0'); return; }
+          var type = card.querySelector('#qcType').value;
+          var batch = card.querySelector('#qcBatch').value;
+          var inspector = card.querySelector('#qcInspector').value;
+          Q.inspections.unshift({
+            no: 'QC-261025-039', type: type, object: batch, sample: sample,
+            ok: 0, ng: 0, inspector: inspector, time: M.now().slice(0, 5), status: '待检'
+          });
+          MES.save();
+          ['all', 'first', 'patrol', 'final'].forEach(function (k) { renderInsp(k); });
+          close();
+          M.toast('检验单已创建：QC-261025-039 · ' + type + ' · 抽样 ' + sample + '，可在检验任务中查看', 'ok');
+        });
+      }
+    });
+  });
+
+  /* 导出质量报表 */
+  document.getElementById('btnExportQuality').addEventListener('click', function () {
+    M.exportCsv('质量报表', inspCols, Q.inspections);
+  });
+});
+</script>
+</body>
+</html>

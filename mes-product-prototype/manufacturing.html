@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>生产制造 · 制造与供应链协同平台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-page="manufacturing">
+
+<aside class="app-nav" id="appNav"></aside>
+<div class="app-body">
+  <header class="app-topbar" id="appTopbar"></header>
+  <main class="app-content">
+    <div class="page-head">
+      <div>
+        <div class="page-title">生产制造</div>
+        <div class="page-sub">集团总计划 · 生产指令 · BOM · 计划排产 · 日/周计划 · 投料领料 · 成品入库</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="page-actions">
+        <button class="btn" id="btnDaily"></button>
+        <button class="btn primary" id="btnInstruction"></button>
+      </div>
+    </div>
+
+    <div id="kpiGrid" class="grid-4 stagger mb-16"></div>
+
+    <section class="card mb-16">
+      <div class="card-head">
+        <div class="card-title" id="flowTitle"></div>
+        <span class="card-sub">集团总计划 → 生产指令单 → BOM 确认 → 计划排产 → 日/周计划 → 投料单 → 生产领料 → 成品入库</span>
+        <div class="spacer"></div>
+        <span class="tag info">计划排产中</span>
+      </div>
+      <div class="card-body">
+        <div id="mfgFlow"></div>
+        <div class="divider"></div>
+        <div class="grid-3">
+          <div class="note"><b>BOM 确认</b><br>BOM 变更需工程变更单（EC）评审通过后生效，未确认的模糊物料不得投产。</div>
+          <div class="note warn"><b>计划排产</b><br>集团总计划逐级分解为生产指令单与日/周计划，排产同步校验产能、物料齐套与设备能力。</div>
+          <div class="note"><b>投料与入库</b><br>日计划确认后自动生成投料单，领料完成方可开工；成品检验合格后办理成品入库。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card mb-16">
+      <div class="card-head">
+        <div class="card-title" id="ledgerTitle"></div>
+        <span class="card-sub">计划 · 指令 · BOM · 排产 · 投料 · 入库</span>
+        <div class="spacer"></div>
+        <span class="tag outline">制造主数据</span>
+      </div>
+      <div class="card-body">
+        <div class="tabs" data-tabs>
+          <button class="tab active" data-tab="group">集团总计划</button>
+          <button class="tab" data-tab="instruction">生产指令</button>
+          <button class="tab" data-tab="bom">BOM 与变更</button>
+          <button class="tab" data-tab="schedule">排产与日周计划</button>
+          <button class="tab" data-tab="feeding">投料与领料</button>
+          <button class="tab" data-tab="finished">成品入库与异常</button>
+        </div>
+
+        <div class="tab-panel" data-panel="group">
+          <div id="groupTable"></div>
+        </div>
+
+        <div class="tab-panel hidden" data-panel="instruction">
+          <div id="instructionTable"></div>
+        </div>
+
+        <div class="tab-panel hidden" data-panel="bom">
+          <div class="between mb-8">
+            <span class="hint">BOM 清单（生效 / 试产 / 待生效）</span>
+            <span class="tag outline">版本库</span>
+          </div>
+          <div id="bomTable" class="mb-16"></div>
+          <div class="between mb-8">
+            <span class="hint">工程变更单</span>
+            <div class="flex gap-8">
+              <span class="tag warn" id="ecCount">—</span>
+              <button class="btn sm" id="btnBomChange"></button>
+            </div>
+          </div>
+          <div id="bomChangeTable"></div>
+        </div>
+
+        <div class="tab-panel hidden" data-panel="schedule">
+          <div class="between mb-8">
+            <span class="hint">产线排产</span>
+            <span class="tag outline">按产线</span>
+          </div>
+          <div id="scheduleTable" class="mb-16"></div>
+          <div class="between mb-8">
+            <span class="hint">日计划</span>
+            <span class="tag info">自动生成投料单</span>
+          </div>
+          <div id="dailyTable" class="mb-16"></div>
+          <div class="between mb-8">
+            <span class="hint">周计划</span>
+            <span class="tag outline">W43 ~ W46</span>
+          </div>
+          <div id="weeklyTable"></div>
+        </div>
+
+        <div class="tab-panel hidden" data-panel="feeding">
+          <div class="between mb-8">
+            <span class="hint">投料单</span>
+            <span class="tag outline">按日计划生成</span>
+          </div>
+          <div id="feedTable" class="mb-16"></div>
+          <div class="between mb-8">
+            <span class="hint">生产领料</span>
+            <span class="tag outline">线边仓出库</span>
+          </div>
+          <div id="pickingTable"></div>
+        </div>
+
+        <div class="tab-panel hidden" data-panel="finished">
+          <div class="between mb-8">
+            <span class="hint">成品入库</span>
+            <span class="tag ok">检验合格入库</span>
+          </div>
+          <div id="finishedTable" class="mb-16"></div>
+          <div class="between mb-8">
+            <span class="hint">生产异常</span>
+            <span class="tag danger">车间反馈</span>
+          </div>
+          <div id="mfgExcTable"></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid-2">
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="progressTitle"></div>
+          <span class="card-sub">计划 / 完成 / 当前工序</span>
+          <div class="spacer"></div>
+          <a class="btn sm ghost" href="production.html">生产执行›</a>
+        </div>
+        <div class="card-body tight" id="progressTable"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div class="card-title" id="bomTitle"></div>
+          <div class="spacer"></div>
+          <span class="tag warn" id="bomTag">—</span>
+        </div>
+        <div class="card-body">
+          <div class="note warn mb-12">模糊物料须在投产前由工程确认，BOM 变更需提交工程变更单评审后生效。</div>
+          <div id="bomTimeline"></div>
+          <div class="divider"></div>
+          <div class="hint">数据来源：BOM 版本库，变更记录见「BOM 与变更」页签。</div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="assets/mock.js"></script>
+<script src="assets/api.js"></script>
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var M = MESUI;
+  var G = DB.manufacturing;
+
+  document.getElementById('btnDaily').innerHTML = M.icon('calendar') + '生成日计划';
+  document.getElementById('btnInstruction').innerHTML = M.icon('plus') + '生成生产指令单';
+  document.getElementById('btnBomChange').innerHTML = M.icon('edit') + '变更申请';
+  document.getElementById('flowTitle').innerHTML = M.icon('gitBranch') + '制造流程';
+  document.getElementById('ledgerTitle').innerHTML = M.icon('clipboard') + '制造台账';
+  document.getElementById('progressTitle').innerHTML = M.icon('activity') + '生产进度跟踪';
+  document.getElementById('bomTitle').innerHTML = M.icon('layers') + 'BOM 齐套提示';
+
+  M.kpi('#kpiGrid', G.kpis);
+
+  M.opFlow('#mfgFlow', [
+    { no: 1, name: '集团总计划', meta: '客户需求 / 月度评审', state: 'done' },
+    { no: 2, name: '生产指令单', meta: '按计划分解', state: 'done' },
+    { no: 3, name: 'BOM 确认', meta: '版本 / 齐套', state: 'done' },
+    { no: 4, name: '计划排产', meta: '产能 / 物料校验', state: 'active' },
+    { no: 5, name: '日/周计划', meta: '产线 / 班次', state: 'todo' },
+    { no: 6, name: '投料单', meta: '随日计划生成', state: 'todo' },
+    { no: 7, name: '生产领料', meta: '线边仓出库', state: 'todo' },
+    { no: 8, name: '成品入库', meta: '检验合格', state: 'todo' }
+  ]);
+
+  var TONE = {
+    '已评审': 'ok', '执行中': 'info', '待评审': 'warn',
+    '已排产': 'ok', '待排产': 'warn', '生产中': 'warn',
+    '生效': 'ok', '试产': 'warn', '待生效': 'info',
+    '已生效': 'ok', '评审中': 'warn', '已驳回': 'danger',
+    '已排程': 'info', '草稿': 'mute',
+    '已领用': 'ok', '部分领用': 'warn', '待领用': 'info',
+    '已领料': 'ok', '待领料': 'info',
+    '已入库': 'ok', '待检验': 'warn',
+    '已隔离': 'danger', '已关闭': 'ok'
+  };
+  function st(text) { return M.tag(text, TONE[text] || M.toneOf(text)); }
+
+  /* 集团总计划 */
+  M.table({
+    mount: '#groupTable',
+    columns: [
+      { key: 'no', label: '计划号', cls: 'mono' },
+      { key: 'customer', label: '客户' },
+      { key: 'product', label: '产品' },
+      { key: 'qty', label: '数量', cls: 'num' },
+      { key: 'reviewDate', label: '评审日期', cls: 'mono' },
+      { key: 'planMonth', label: '计划月份', cls: 'mono' },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: G.groupPlan,
+    pageSize: 7,
+    exportName: '集团总计划',
+    searchPlaceholder: '搜索计划号 / 客户 / 产品',
+    rowClass: function (r) { return r.status === '待评审' ? 'row-warn' : ''; },
+    onRowClick: openGroupPlan
+  });
+
+  /* 生产指令 */
+  var instructionTable = M.table({
+    mount: '#instructionTable',
+    columns: [
+      { key: 'no', label: '指令单号', cls: 'mono' },
+      { key: 'groupPlan', label: '集团计划', cls: 'mono' },
+      { key: 'product', label: '产品' },
+      { key: 'qty', label: '数量', cls: 'num' },
+      { key: 'orderDate', label: '下单日期', cls: 'mono' },
+      { key: 'planDate', label: '计划日期', cls: 'mono' },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: G.instructions,
+    pageSize: 7,
+    exportName: '生产指令单',
+    searchPlaceholder: '搜索指令单 / 集团计划 / 产品',
+    onRowClick: openInstruction
+  });
+
+  /* BOM 与变更 */
+  M.table({
+    mount: '#bomTable',
+    columns: [
+      { key: 'product', label: '产品' },
+      { key: 'version', label: '版本', cls: 'mono' },
+      { key: 'items', label: '物料项数', cls: 'num' },
+      { key: 'confirmed', label: '已确认', cls: 'num' },
+      { key: 'fuzzy', label: '模糊项', cls: 'num', formatter: function (r) {
+        return r.fuzzy ? '<span style="color:var(--warning)">' + r.fuzzy + '</span>' : '<span class="muted">0</span>';
+      } },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: G.boms,
+    pageSize: 6,
+    exportName: 'BOM清单',
+    searchPlaceholder: '搜索产品 / 版本'
+  });
+
+  var bomChangeTable = M.table({
+    mount: '#bomChangeTable',
+    columns: [
+      { key: 'no', label: '变更单', cls: 'mono' },
+      { key: 'product', label: '产品' },
+      { key: 'version', label: '版本', cls: 'mono' },
+      { key: 'change', label: '变更内容' },
+      { key: 'date', label: '日期', cls: 'mono' },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: G.bomChanges,
+    pageSize: 6,
+    exportName: 'BOM变更',
+    searchPlaceholder: '搜索变更单 / 产品'
+  });
+  document.getElementById('ecCount').textContent = G.bomChanges.length + ' 单';
+
+  /* 排产与日周计划 */
+  M.table({
+    mount: '#scheduleTable',
+    columns: [
+      { key: 'line', label: '产线', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.line) + '</span>'; } },
+      { key: 'product', label: '产品' },
+      { key: 'qty', label: '数量', cls: 'num' },
+      { key: 'start', label: '开始', cls: 'mono' },
+      { key: 'end', label: '结束', cls: 'mono' },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: G.schedules,
+    pageSize: 6,
+    exportName: '产线排产',
+    searchPlaceholder: '搜索产线 / 产品'
+  });
+
+  var dailyTable = M.table({
+    mount: '#dailyTable',
+    columns: [
+      { key: 'date', label: '日期', cls: 'mono' },
+      { key: 'product', label: '产品' },
+      { key: 'line', label: '产线', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.line) + '</span>'; } },
+      { key: 'qty', label: '数量', cls: 'num' },
+      { key: 'feedingNo', label: '投料单', cls: 'mono' },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: G.dailyPlans,
+    pageSize: 6,
+    exportName: '日计划',
+    searchPlaceholder: '搜索日期 / 产品 / 产线'
+  });
+
+  M.table({
+    mount: '#weeklyTable',
+    columns: [
+      { key: 'week', label: '周次', cls: 'mono' },
+      { key: 'plan', label: '计划', cls: 'num' },
+      { key: 'done', label: '完成', cls: 'num' },
+      { key: 'rate', label: '达成率', sortable: false, formatter: function (r) {
+        if (!r.done) return '<span class="muted">—</span>';
+        return M.progress(r.rate, M.pctTone(r.rate)) + '<span class="mono hint">' + r.rate + '%</span>';
+      } },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: G.weeklyPlans,
+    pageSize: 6,
+    exportName: '周计划',
+    search: false
+  });
+
+  /* 投料与领料 */
+  var feedTable = M.table({
+    mount: '#feedTable',
+    columns: [
+      { key: 'no', label: '投料单', cls: 'mono' },
+      { key: 'date', label: '日期', cls: 'mono' },
+      { key: 'product', label: '产品' },
+      { key: 'material', label: '物料' },
+      { key: 'qty', label: '数量', cls: 'num' },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: G.feeding,
+    pageSize: 6,
+    exportName: '投料单',
+    searchPlaceholder: '搜索投料单 / 产品 / 物料'
+  });
+
+  M.table({
+    mount: '#pickingTable',
+    columns: [
+      { key: 'no', label: '领料单', cls: 'mono' },
+      { key: 'line', label: '产线', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.line) + '</span>'; } },
+      { key: 'material', label: '物料' },
+      { key: 'qty', label: '数量', cls: 'num' },
+      { key: 'date', label: '日期', cls: 'mono' },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: G.picking,
+    pageSize: 5,
+    exportName: '领料单',
+    search: false
+  });
+
+  /* 成品入库与异常 */
+  M.table({
+    mount: '#finishedTable',
+    columns: [
+      { key: 'no', label: '入库单', cls: 'mono' },
+      { key: 'product', label: '产品' },
+      { key: 'qty', label: '数量', cls: 'num' },
+      { key: 'warehouse', label: '仓库' },
+      { key: 'date', label: '日期', cls: 'mono' },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: G.finished,
+    pageSize: 5,
+    exportName: '成品入库',
+    searchPlaceholder: '搜索入库单 / 产品'
+  });
+
+  M.table({
+    mount: '#mfgExcTable',
+    columns: [
+      { key: 'no', label: '异常单', cls: 'mono' },
+      { key: 'time', label: '时间', cls: 'mono' },
+      { key: 'type', label: '类型', formatter: function (r) { return '<span class="tag outline">' + M.esc(r.type) + '</span>'; } },
+      { key: 'product', label: '产品' },
+      { key: 'qty', label: '数量', cls: 'num' },
+      { key: 'reason', label: '原因' },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: G.exceptions,
+    pageSize: 5,
+    exportName: '生产异常',
+    search: false
+  });
+
+  /* 生产进度 */
+  M.table({
+    mount: '#progressTable',
+    columns: [
+      { key: 'order', label: '生产指令', cls: 'mono' },
+      { key: 'product', label: '产品' },
+      { key: 'plan', label: '计划', cls: 'num' },
+      { key: 'done', label: '完成', cls: 'num' },
+      { key: 'stage', label: '当前工序' },
+      { key: 'percent', label: '进度', sortable: false, formatter: function (r) {
+        return M.progress(r.percent, M.pctTone(r.percent)) + '<span class="mono hint">' + r.percent + '%</span>';
+      } },
+      { key: 'status', label: '状态', formatter: function (r) { return st(r.status); } }
+    ],
+    rows: G.progress,
+    pageSize: 6,
+    search: false
+  });
+
+  /* BOM 齐套提示 */
+  var fuzzyBoms = G.boms.filter(function (b) { return b.fuzzy > 0; });
+  document.getElementById('bomTag').textContent = fuzzyBoms.length + ' 项待确认';
+  M.timeline('#bomTimeline', fuzzyBoms.map(function (b) {
+    return {
+      tone: 'warn',
+      title: b.product + ' · ' + b.version,
+      time: '模糊 ' + b.fuzzy + ' / ' + b.items + ' 项',
+      body: '已确认 ' + b.confirmed + ' 项，剩余 ' + b.fuzzy + ' 项为模糊物料，需在投产前由工程确认。'
+    };
+  }));
+
+  /* ---------- 抽屉 ---------- */
+  function chain(i, active) { return i < active ? 'done' : i === active ? 'active' : 'todo'; }
+
+  function openGroupPlan(r) {
+    var active = r.status === '执行中' ? 2 : r.status === '已评审' ? 1 : 0;
+    M.drawer({
+      title: r.no,
+      sub: r.customer + ' · ' + r.product + ' · ' + r.planMonth,
+      body: '<div id="gpDl" class="mb-16"></div>' +
+        '<div class="divider"></div>' +
+        '<div class="hint mb-8">计划执行链路</div><div id="gpFlow" class="mb-16"></div>' +
+        '<div class="hint mb-8">计划履历</div><div id="gpTl"></div>',
+      footer: '<button class="btn" data-close>关闭</button><div class="spacer"></div><a class="btn primary" href="plan.html">进入计划管理</a>',
+      onMount: function (card) {
+        M.dl(card.querySelector('#gpDl'), [
+          ['计划号', r.no], ['客户', r.customer], ['产品', r.product],
+          ['数量', r.qty + ' 台'], ['评审日期', r.reviewDate], ['计划月份', r.planMonth],
+          ['状态', st(r.status), 'html']
+        ]);
+        M.opFlow(card.querySelector('#gpFlow'), [
+          { no: 1, name: '集团总计划', meta: r.planMonth, state: chain(0, active) },
+          { no: 2, name: '生产指令单', meta: active > 1 ? '已生成' : '待生成', state: chain(1, active) },
+          { no: 3, name: '计划排产', meta: '日 / 周计划', state: chain(2, active) },
+          { no: 4, name: '投料单', meta: '随日计划生成', state: chain(3, active) },
+          { no: 5, name: '成品入库', meta: '检验合格', state: chain(4, active) }
+        ]);
+        M.timeline(card.querySelector('#gpTl'), [
+          { tone: 'ok', title: '集团总计划下达', time: r.reviewDate + ' 09:00', body: '客户 ' + r.customer + ' · 需求 ' + r.qty + ' 台' },
+          { tone: r.status === '待评审' ? 'warn' : 'ok', title: '计划评审', time: r.reviewDate, body: r.status === '待评审' ? '等待生产、采购、工程三方评审' : '产能、物料与交期三方评审通过' },
+          { tone: r.status === '执行中' ? 'active' : 'info', title: '生产指令与排产', time: '10-25', body: r.status === '执行中' ? '生产指令已下达，日计划分解至产线与投料单' : '评审通过后生成生产指令单，进入计划排产' }
+        ]);
+      }
+    });
+  }
+
+  function openInstruction(r) {
+    var active = r.status === '生产中' ? 3 : 2;
+    M.drawer({
+      title: r.no,
+      sub: r.groupPlan + ' · ' + r.product,
+      body: '<div id="ciDl" class="mb-16"></div>' +
+        '<div class="divider"></div>' +
+        '<div class="hint mb-8">制造执行链路</div><div id="ciFlow" class="mb-16"></div>' +
+        '<div class="hint mb-8">指令履历</div><div id="ciTl"></div>',
+      footer: '<button class="btn" data-close>关闭</button><div class="spacer"></div><a class="btn primary" href="production.html">进入生产执行</a>',
+      onMount: function (card) {
+        M.dl(card.querySelector('#ciDl'), [
+          ['指令单号', r.no], ['集团计划', r.groupPlan], ['产品', r.product],
+          ['数量', r.qty + ' 台'], ['下单日期', r.orderDate], ['计划日期', r.planDate],
+          ['状态', st(r.status), 'html']
+        ]);
+        M.opFlow(card.querySelector('#ciFlow'), [
+          { no: 1, name: '生产指令单', meta: '已下达', state: chain(0, active) },
+          { no: 2, name: 'BOM 确认', meta: '齐套校验', state: chain(1, active) },
+          { no: 3, name: '计划排产', meta: '产线 / 班次', state: chain(2, active) },
+          { no: 4, name: '投料单', meta: '自动生成', state: chain(3, active) },
+          { no: 5, name: '生产领料', meta: '线边仓出库', state: chain(4, active) },
+          { no: 6, name: '成品入库', meta: '检验合格', state: chain(5, active) }
+        ]);
+        M.timeline(card.querySelector('#ciTl'), [
+          { tone: 'ok', title: '生产指令下达', time: r.orderDate + ' 08:40', body: '由集团计划 ' + r.groupPlan + ' 分解，数量 ' + r.qty + ' 台' },
+          { tone: 'ok', title: 'BOM 齐套检查', time: r.orderDate + ' 09:10', body: 'BOM 版本有效，模糊物料已提交工程确认' },
+          { tone: r.status === '待排产' ? 'warn' : 'active', title: '计划排产', time: r.planDate, body: r.status === '待排产' ? '等待产线与班次确认，尚未生成投料单' : '已排产至产线，日计划与投料单同步生成' }
+        ]);
+      }
+    });
+  }
+
+  /* ---------- 生成生产指令单 ---------- */
+  function openInstructionForm() {
+    var options = G.groupPlan.filter(function (r) { return r.status === '已评审'; });
+    if (!options.length) { M.toast('暂无已评审的集团总计划', 'warn'); return; }
+    var first = options[0];
+
+    M.modal({
+      title: '生成生产指令单',
+      body: '<div class="form-grid">' +
+          '<div class="field full"><span class="label">集团总计划（已评审）</span><select class="select" id="ciPlan">' +
+            options.map(function (r) {
+              return '<option value="' + M.esc(r.no) + '" data-product="' + M.esc(r.product) + '" data-qty="' + r.qty + '">' +
+                M.esc(r.no + ' · ' + r.customer + ' · ' + r.product) + '</option>';
+            }).join('') +
+          '</select></div>' +
+          '<div class="field"><span class="label">产品</span><input class="input" id="ciFormProduct" readonly value="' + M.esc(first.product) + '"></div>' +
+          '<div class="field"><span class="label">数量</span><input class="input" id="ciFormQty" type="number" min="1" value="' + first.qty + '"></div>' +
+          '<div class="field"><span class="label">计划日期</span><input class="input" id="ciFormDate" type="date" value="2026-10-28"></div>' +
+        '</div>' +
+        '<div class="note" style="margin-top:12px">生产指令单按集团总计划分解，生成后进入 BOM 确认与计划排产环节。</div>',
+      footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" id="ciFormSubmit">生成指令单</button>',
+      onMount: function (card, close) {
+        var sel = card.querySelector('#ciPlan');
+        var productInput = card.querySelector('#ciFormProduct');
+        var qtyInput = card.querySelector('#ciFormQty');
+        function sync() {
+          var opt = sel.options[sel.selectedIndex];
+          productInput.value = opt.getAttribute('data-product');
+          qtyInput.value = opt.getAttribute('data-qty');
+        }
+        sel.addEventListener('change', sync);
+
+        card.querySelector('#ciFormSubmit').addEventListener('click', function () {
+          var qty = Number(qtyInput.value) || 0;
+          if (!qty) { M.toast('请填写指令数量', 'warn'); return; }
+          G.instructions.unshift({
+            no: 'SC-261025-019',
+            groupPlan: sel.value,
+            product: productInput.value,
+            qty: qty,
+            orderDate: '2026-10-25',
+            planDate: card.querySelector('#ciFormDate').value || '2026-10-28',
+            status: '待排产'
+          });
+          var gp = G.groupPlan.filter(function (x) { return x.no === sel.value; })[0];
+          if (gp) gp.status = '执行中';
+          MES.save();
+          instructionTable.refresh(G.instructions);
+          close();
+          M.toast('生产指令单已生成：SC-261025-019（演示）', 'ok');
+        });
+      }
+    });
+  }
+
+  /* ---------- 生成日计划 ---------- */
+  function openDailyForm() {
+    var options = G.instructions.filter(function (r) { return r.status === '待排产' || r.status === '已排产'; });
+    if (!options.length) { M.toast('暂无可排产的生产指令', 'warn'); return; }
+
+    M.modal({
+      title: '生成日计划',
+      body: '<div class="form-grid">' +
+          '<div class="field full"><span class="label">生产指令</span><select class="select" id="cdOrder">' +
+            options.map(function (r) {
+              return '<option value="' + M.esc(r.no) + '" data-product="' + M.esc(r.product) + '">' +
+                M.esc(r.no + ' · ' + r.product) + '</option>';
+            }).join('') +
+          '</select></div>' +
+          '<div class="field"><span class="label">产线</span><select class="select" id="cdLine">' +
+            ['AS-01', 'AS-02', 'MC-01', 'MC-02', 'TS-01', 'PK-01'].map(function (x) { return '<option>' + x + '</option>'; }).join('') +
+          '</select></div>' +
+          '<div class="field"><span class="label">日期</span><input class="input" id="cdDate" type="date" value="2026-10-28"></div>' +
+          '<div class="field"><span class="label">数量</span><input class="input" id="cdQty" type="number" min="1" value="260"></div>' +
+        '</div>' +
+        '<div class="note" style="margin-top:12px">日计划确认后自动生成投料单，并同步至线边物料与生产执行。</div>',
+      footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" id="cdSubmit">生成日计划</button>',
+      onMount: function (card, close) {
+        card.querySelector('#cdSubmit').addEventListener('click', function () {
+          var qty = Number(card.querySelector('#cdQty').value) || 0;
+          if (!qty) { M.toast('请填写计划数量', 'warn'); return; }
+          var sel = card.querySelector('#cdOrder');
+          var opt = sel.options[sel.selectedIndex];
+          G.dailyPlans.unshift({
+            date: card.querySelector('#cdDate').value || '2026-10-28',
+            product: opt.getAttribute('data-product'),
+            line: card.querySelector('#cdLine').value,
+            qty: qty,
+            feedingNo: 'TL-261028-001',
+            status: '已排程'
+          });
+          var ins = G.instructions.filter(function (x) { return x.no === sel.value; })[0];
+          if (ins) ins.status = '已排产';
+          if (!G.feeding.some(function (x) { return x.no === 'TL-261028-001'; })) {
+            G.feeding.unshift({
+              no: 'TL-261028-001', date: card.querySelector('#cdDate').value || '2026-10-28',
+              product: opt.getAttribute('data-product'), material: '定子铁芯', qty: qty, status: '待领用'
+            });
+          }
+          MES.save();
+          dailyTable.refresh(G.dailyPlans);
+          if (typeof feedTable !== 'undefined' && feedTable) feedTable.refresh(G.feeding);
+          if (typeof instructionTable !== 'undefined' && instructionTable) instructionTable.refresh(G.instructions);
+          close();
+          M.toast('日计划已生成，并自动生成投料单 TL-261028-001（演示）', 'ok');
+        });
+      }
+    });
+  }
+
+  /* ---------- BOM 变更申请 ---------- */
+  function openBomChangeForm() {
+    var products = [];
+    G.boms.forEach(function (b) { if (products.indexOf(b.product) < 0) products.push(b.product); });
+
+    M.modal({
+      title: 'BOM 变更申请',
+      body: '<div class="form-grid">' +
+          '<div class="field full"><span class="label">产品</span><select class="select" id="ecProduct">' +
+            products.map(function (p) { return '<option>' + M.esc(p) + '</option>'; }).join('') +
+          '</select></div>' +
+          '<div class="field"><span class="label">版本</span><input class="input" id="ecVersion" placeholder="如：V3.2 → V3.3"></div>' +
+          '<div class="field"><span class="label">生效日期</span><input class="input" id="ecDate" type="date" value="2026-10-28"></div>' +
+          '<div class="field full"><span class="label">变更内容</span><textarea class="textarea" id="ecChange" placeholder="描述物料替换、结构或工艺变更及影响范围"></textarea></div>' +
+        '</div>' +
+        '<div class="note warn" style="margin-top:12px">变更单提交后进入工程变更评审，评审通过前原 BOM 继续生效；涉及物料替代需同步采购确认供应能力。</div>',
+      footer: '<div class="spacer"></div><button class="btn" data-close>取消</button><button class="btn primary" id="ecSubmit">提交评审</button>',
+      onMount: function (card, close) {
+        card.querySelector('#ecSubmit').addEventListener('click', function () {
+          var change = card.querySelector('#ecChange').value.trim();
+          if (!change) { M.toast('请填写变更内容', 'warn'); return; }
+          G.bomChanges.unshift({
+            no: 'EC-261025-003',
+            product: card.querySelector('#ecProduct').value,
+            version: card.querySelector('#ecVersion').value.trim() || '版本待定',
+            change: change,
+            date: card.querySelector('#ecDate').value || '2026-10-28',
+            status: '待评审'
+          });
+          bomChangeTable.refresh(G.bomChanges);
+          document.getElementById('ecCount').textContent = G.bomChanges.length + ' 单';
+          MES.save();
+          close();
+          M.toast('工程变更单已提交评审（演示）', 'ok');
+        });
+      }
+    });
+  }
+
+  document.getElementById('btnInstruction').addEventListener('click', openInstructionForm);
+  document.getElementById('btnDaily').addEventListener('click', openDailyForm);
+  document.getElementById('btnBomChange').addEventListener('click', openBomChangeForm);
+
+  M.bindTabs(document);
+});
+</script>
+</body>
+</html>
